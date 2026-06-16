@@ -34,8 +34,6 @@ export default function AuthModal() {
         setError('');
 
         try {
-            // 수정 전: const authToken = await sha256(pin);
-            // 수정 후: 평문 그대로 전송 (HTTPS가 보호)
             const authToken = pin;
 
             const res = await chatApi.confirm(sessionId, authToken, {

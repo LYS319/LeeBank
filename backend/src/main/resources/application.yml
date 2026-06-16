@@ -3,9 +3,9 @@ server:
 
 spring:
   datasource:
-    url: jdbc:oracle:thin:@54.180.203.150:1521/XEPDB1
-    username: bank
-    password: Bank1234
+    url: ${DB_URL}
+    username: ${DB_USER}
+    password: ${DB_PASS}
     driver-class-name: oracle.jdbc.OracleDriver
 
   jackson:
@@ -21,10 +21,10 @@ mybatis:
     log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
 
 encryption:
-  aes-key: ${AES_SECRET_KEY:0123456789abcdef0123456789abcdef}
+  aes-key: ${AES_SECRET_KEY}
 
 cors:
-  allowed-origins: ${CORS_ORIGINS:http://localhost:5173}
+  allowed-origins: ${CORS_ORIGINS}
 
 logging:
   level:

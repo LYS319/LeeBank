@@ -22,7 +22,7 @@ app = FastAPI(title="LeeBank AI Agent")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "https://*.vercel.app"],
+    allow_origins=["http://localhost:5173", "https://*.vercel.app", "*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -42,7 +42,7 @@ class ChatRequest(BaseModel):
 class ConfirmRequest(BaseModel):
     sessionId: str
     authToken: str
-    memberId: str = "user001"    # 회원 ID (기본값 임시)
+    memberId: str = "user001"
     pendingAction: dict
 
 
@@ -136,7 +136,7 @@ async def _call_mcp_tool(tool: str, params: dict) -> dict:
             "immediate_transfer": f"{base}/api/transfer/immediate",
             "schedule_transfer":  f"{base}/api/transfer/schedule",
             "get_balance":        f"{base}/api/account/{params.get('accountNo', '')}",
-            "get_history":        f"{base}/api/history/{params.get('fromAccount', '')}",
+            "get_history":        f"{base}/api/account/history/{params.get('accountNo', '')}",
         }
         url = url_map.get(tool)
         if not url:
@@ -144,7 +144,8 @@ async def _call_mcp_tool(tool: str, params: dict) -> dict:
 
     try:
         async with httpx.AsyncClient(timeout=10) as client:
-            if tool == "get_balance" and not USE_STUB:
+            # GET 요청: 잔액조회, 거래내역조회
+            if tool in ("get_balance", "get_history") and not USE_STUB:
                 resp = await client.get(url)
             else:
                 resp = await client.post(url, json=params)

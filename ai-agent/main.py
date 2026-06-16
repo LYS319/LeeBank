@@ -127,18 +127,18 @@ async def confirm(body: ConfirmRequest):
 
 async def _verify_auth(member_id: str, auth_token: str) -> bool:
     """Spring /api/auth/verify 호출"""
-    base = STUB_URL if USE_STUB else MCP_SERVER_URL
+    # stub 모드에서는 인증 자동 통과
+    if USE_STUB:
+        return True
+    
     try:
         async with httpx.AsyncClient(timeout=10) as client:
             resp = await client.post(
-                f"{base}/api/auth/verify",
+                f"{MCP_SERVER_URL}/api/auth/verify",
                 json={"memberId": member_id, "password": auth_token},
             )
             return resp.status_code == 200 and resp.json().get("success", False)
     except Exception:
-        # stub 모드에서 auth 서버 없으면 통과 처리
-        if USE_STUB:
-            return True
         return False
 
 

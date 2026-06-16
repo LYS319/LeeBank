@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.bank.mapper.MemberMapper">
+
+    <resultMap id="memberResultMap" type="com.bank.dto.MemberDto">
+        <id     property="memberId"  column="member_id"/>
+        <result property="name"      column="name"/>
+        <result property="password"  column="password"/>
+        <result property="phone"     column="phone"/>
+    </resultMap>
+
+    <!-- 회원 ID로 조회 -->
+    <select id="selectByMemberId" resultMap="memberResultMap">
+        SELECT member_id, name, password, phone
+        FROM MEMBER
+        WHERE member_id = #{memberId}
+    </select>
+
+</mapper>

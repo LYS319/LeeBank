@@ -28,3 +28,21 @@ target/
 # OS
 .DS_Store
 Thumbs.db
+
+# Spring Boot 설정 (민감정보 포함 시)
+application-local.yml
+application-prod.yml
+
+# Eclipse 관련
+.classpath
+.project
+.settings/
+*.launch
+
+# Oracle 관련 임시파일
+*.log
+*.dmp
+
+# IntelliJ
+*.iws
+*.ipr

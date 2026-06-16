@@ -35,7 +35,7 @@ export default function AuthModal() {
 
         try {
             // SHA-256 해시 후 전송
-            const authToken = await sha256(pin);
+            const authToken = pin;
 
             const res = await chatApi.confirm(sessionId, authToken, {
                 tool: pendingAction.tool,

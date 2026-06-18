@@ -35,6 +35,20 @@ public class AccountController {
         return ResponseEntity.ok(account);
     }
 
+    // 회원ID로 계좌 조회 (로그인 후 본인 계좌 정보 조회용)
+    @GetMapping("/by-member/{memberId}")
+    public ResponseEntity<?> getAccountByMember(@PathVariable String memberId) {
+        AccountDto account = accountMapper.selectByMemberId(memberId);
+        if (account == null) {
+            return ResponseEntity.status(404).body(Map.of(
+                    "success", false,
+                    "errorCode", "ACCOUNT_NOT_FOUND",
+                    "message", "해당 회원의 계좌를 찾을 수 없습니다."
+            ));
+        }
+        return ResponseEntity.ok(account);
+    }
+
     // 거래내역 조회
     @GetMapping("/history/{accountNo}")
     public ResponseEntity<List<TransactionDto>> getHistory(

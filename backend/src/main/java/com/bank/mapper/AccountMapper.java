@@ -10,6 +10,9 @@ public interface AccountMapper {
     // 계좌번호로 계좌 조회
     AccountDto selectByAccountNo(@Param("accountNo") String accountNo);
 
+    // 회원ID로 계좌 조회 (로그인 후 본인 계좌 찾기용) — 신규 추가
+    AccountDto selectByMemberId(@Param("memberId") String memberId);
+
     // 잔액 차감 (즉시이체 / 예약이체 선차감)
     int deductBalance(@Param("accountNo") String accountNo,
                       @Param("amount") Long amount);

@@ -50,4 +50,13 @@
           AND hold_amount >= #{amount}
     </update>
 
+    <!-- 회원ID로 계좌 조회 (해당 회원의 첫 번째 계좌) -->
+    <select id="selectByMemberId" resultMap="accountResultMap">
+        SELECT account_no, member_id, bank_code, balance, hold_amount, account_status
+        FROM ACCOUNT
+        WHERE member_id = #{memberId}
+        ORDER BY created_at ASC
+        FETCH FIRST 1 ROWS ONLY
+    </select>
+
 </mapper>

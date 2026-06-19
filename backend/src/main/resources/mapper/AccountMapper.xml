@@ -1,5 +1,62 @@
 <?xml version="1.0" encoding="UTF-8" ?>
-<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.bank.mapper.AccountMapper">
+
+    <!-- 결과 매핑 -->
+    <resultMap id="accountResultMap" type="com.bank.dto.AccountDto">
+        <id     property="accountNo"    column="account_no"/>
+        <result property="memberId"     column="member_id"/>
+        <result property="bankCode"     column="bank_code"/>
+        <result property="balance"      column="balance"/>
+        <result property="holdAmount"   column="hold_amount"/>
+        <result property="accountStatus" column="account_status"/>
+    </resultMap>
+
+    <!-- 계좌번호로 계좌 조회 -->
+    <select id="selectByAccountNo" resultMap="accountResultMap">
+        SELECT account_no, member_id, bank_code, balance, hold_amount, account_status
+        FROM ACCOUNT
+        WHERE account_no = #{accountNo}
+    </select>
+
+    <!-- 잔액 차감 (balance - amount, 잔액 부족 시 업데이트 안 됨) -->
+    <update id="deductBalance">
+        UPDATE ACCOUNT
+        SET balance = balance - #{amount}
+        WHERE account_no = #{accountNo}
+          AND balance >= #{amount}
+    </update>
+
+    <!-- 잔액 입금 -->
+    <update id="addBalance">
+        UPDATE ACCOUNT
+        SET balance = balance + #{amount}
+        WHERE account_no = #{accountNo}
+    </update>
+
+    <!-- hold_amount 증가 (예약이체 선차감) -->
+    <update id="increaseHold">
+        UPDATE ACCOUNT
+        SET hold_amount = hold_amount + #{amount}
+        WHERE account_no = #{accountNo}
+    </update>
+
+    <!-- hold_amount 감소 (예약이체 실행 완료) -->
+    <update id="decreaseHold">
+        UPDATE ACCOUNT
+        SET hold_amount = hold_amount - #{amount}
+        WHERE account_no = #{accountNo}
+          AND hold_amount >= #{amount}
+    </update>
+
+    <!-- 회원ID로 계좌 조회 (해당 회원의 첫 번째 계좌) -->
+    <select id="selectByMemberId" resultMap="accountResultMap">
+        SELECT account_no, member_id, bank_code, balance, hold_amount, account_status
+        FROM ACCOUNT
+        WHERE member_id = #{memberId}
+        ORDER BY created_at ASC
+        FETCH FIRST 1 ROWS ONLY
+    </select>
 
 </mapper>

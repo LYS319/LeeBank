@@ -35,4 +35,14 @@ export interface Message {
     role: 'user' | 'assistant';
     content: string;
     timestamp: Date;
+    /** AI 응답이 거래 결과일 때 영수증 카드로 렌더링하기 위한 메타 정보 */
+    card?: ResultCardData;
+}
+
+export type ResultCardKind = 'balance' | 'transfer' | 'schedule' | 'history';
+
+export interface ResultCardData {
+    kind: ResultCardKind;
+    amount?: number;
+    rows: { label: string; value: string }[];
 }

@@ -36,7 +36,7 @@ export default function Login() {
       const accountNo = accountRes.data.accountNo;
 
       login(memberId.trim(), accountNo, ownerName);
-      navigate("/", { replace: true });
+      navigate("/home", { replace: true });
     } catch (err: unknown) {
       const e = err as { response?: { status?: number; data?: { message?: string } } };
       if (e.response?.status === 401) {

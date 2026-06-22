@@ -62,4 +62,14 @@ export const authApi = {
     // 평문 비밀번호를 그대로 전달하고 해싱은 Spring(백엔드)에서 1회만 수행한다.
     verify: (memberId: string, password: string) =>
         backendClient.post('/api/auth/verify', { memberId, password }),
+
+    // 아이디 중복 체크 — Spring에 GET /api/auth/check-id/{memberId} 신규 구현 필요 (B 협의 필요)
+    checkMemberId: (memberId: string) =>
+        backendClient.get(`/api/auth/check-id/${memberId}`),
+
+    // 회원가입 + 계좌개설 — Spring에 POST /api/auth/signup 신규 구현 필요 (B 협의 필요)
+    // 회원 INSERT + 계좌 INSERT를 하나의 @Transactional로 묶어서 처리해야 함
+    // (회원만 생성되고 계좌가 안 만들어지는 상황 방지)
+    signup: (payload: { memberId: string; password: string; name: string; phone: string }) =>
+        backendClient.post('/api/auth/signup', payload),
 };

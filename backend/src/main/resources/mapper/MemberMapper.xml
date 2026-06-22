@@ -17,4 +17,18 @@
         WHERE member_id = #{memberId}
     </select>
 
+    <!-- 아이디 중복 체크 — 0이면 사용 가능 -->
+    <select id="countByMemberId" resultType="int">
+        SELECT COUNT(*)
+        FROM MEMBER
+        WHERE member_id = #{memberId}
+    </select>
+
+    <!-- 회원가입 — 신규 회원 INSERT -->
+    <!-- name은 평문 그대로, password는 SHA-256 해시, phone은 AES-256 암호화된 값이 Service에서 넘어옴 -->
+    <insert id="insert" parameterType="com.bank.dto.MemberDto">
+        INSERT INTO MEMBER (member_id, name, password, phone, created_at)
+        VALUES (#{memberId}, #{name}, #{password}, #{phone}, SYSDATE)
+    </insert>
+
 </mapper>

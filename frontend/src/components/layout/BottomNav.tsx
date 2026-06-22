@@ -1,7 +1,7 @@
 import { useLocation, useNavigate } from "react-router-dom";
 
 const TABS = [
-  { path: "/", label: "홈" },
+  { path: "/home", label: "홈" },
   { path: "/transfer", label: "이체" },
   { path: "/chat", label: "AI채팅" },
   { path: "/history", label: "내역" },
@@ -55,7 +55,7 @@ function HistoryIcon({ active }: { active: boolean }) {
 }
 
 const ICONS: Record<string, (active: boolean) => JSX.Element> = {
-  "/": (active) => <HomeIcon active={active} />,
+  "/home": (active) => <HomeIcon active={active} />,
   "/transfer": (active) => <TransferIcon active={active} />,
   "/chat": (active) => <ChatIcon active={active} />,
   "/history": (active) => <HistoryIcon active={active} />,

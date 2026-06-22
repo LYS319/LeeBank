@@ -126,6 +126,19 @@ input {
   }
 }
 
+/* 랜딩 / 로그인 / 회원가입 — 모바일에서는 풀스크린 앱처럼,
+   데스크탑에서는 480px 프레임을 벗어나 일반 웹사이트처럼 전체 너비를 쓴다. */
+.app-shell--full {
+  box-shadow: none;
+}
+
+@media (min-width: 769px) {
+  .app-shell--full {
+    max-width: none;
+    background: var(--surface);
+  }
+}
+
 .app-content {
   flex: 1;
   display: flex;
@@ -1242,4 +1255,566 @@ input {
   background: none;
   border: none;
   cursor: pointer;
+}
+/* ============================================
+   Landing Page
+   ============================================ */
+
+.landing {
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+}
+
+/* ── 상단 네비 ── */
+.landing__nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+}
+
+.landing__nav-brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.landing__nav-mark {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  background: var(--primary);
+  color: white;
+  font-weight: 800;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.landing__nav-name {
+  font-size: 16px;
+  font-weight: 800;
+  color: var(--ink);
+  letter-spacing: -0.01em;
+}
+
+.landing__nav-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.landing__nav-link {
+  background: none;
+  border: none;
+  color: var(--ink-soft);
+  font-size: 13.5px;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 8px 10px;
+}
+
+.landing__nav-cta {
+  background: var(--primary);
+  color: white;
+  border: none;
+  border-radius: 10px;
+  padding: 9px 16px;
+  font-size: 13.5px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+/* ── 히어로 ── */
+.landing__hero {
+  padding: 24px 20px 32px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.landing__eyebrow {
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--primary);
+  letter-spacing: 0.02em;
+  margin: 0 0 10px;
+}
+
+.landing__headline {
+  font-size: 27px;
+  font-weight: 800;
+  line-height: 1.32;
+  letter-spacing: -0.02em;
+  color: var(--ink);
+  margin: 0 0 14px;
+}
+
+.landing__sub {
+  font-size: 14.5px;
+  line-height: 1.6;
+  color: var(--ink-soft);
+  margin: 0;
+}
+
+.landing__sub-break {
+  display: none;
+}
+
+.landing__hero-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 22px;
+}
+
+.landing__cta-primary {
+  flex: 1;
+  background: var(--primary);
+  color: white;
+  border: none;
+  border-radius: 14px;
+  padding: 15px;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform 0.1s, background 0.15s;
+}
+
+.landing__cta-primary:active {
+  transform: scale(0.99);
+}
+
+.landing__cta-secondary {
+  flex: 1;
+  background: var(--surface);
+  color: var(--ink);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 15px;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+/* ── 미니 채팅 데모 ── */
+.landing__hero-demo {
+  width: 100%;
+}
+
+.landing__demo-window {
+  background: var(--surface);
+  border-radius: 18px;
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-md);
+  overflow: hidden;
+}
+
+.landing__demo-bar {
+  display: flex;
+  gap: 6px;
+  padding: 12px 14px;
+  background: var(--surface-2);
+}
+
+.landing__demo-bar span {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--border);
+}
+
+.landing__demo-body {
+  padding: 18px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.landing__demo-bubble {
+  font-size: 13.5px;
+  line-height: 1.5;
+  padding: 10px 14px;
+  border-radius: 16px;
+  max-width: 86%;
+}
+
+.landing__demo-bubble--user {
+  align-self: flex-end;
+  background: var(--primary);
+  color: white;
+  border-radius: 16px 16px 4px 16px;
+}
+
+.landing__demo-bubble--ai {
+  align-self: flex-start;
+  background: var(--surface-2);
+  color: var(--ink);
+  border-radius: 16px 16px 16px 4px;
+}
+
+.landing__demo-pin {
+  align-self: center;
+  display: flex;
+  gap: 8px;
+  padding: 10px 0 4px;
+}
+
+.landing__demo-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+}
+
+.landing__demo-dot--filled {
+  background: var(--primary);
+  border-color: var(--primary);
+}
+
+/* ── 핵심 가치 3가지 ── */
+.landing__features {
+  padding: 8px 20px 36px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.landing__feature {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 20px;
+}
+
+.landing__feature-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  background: var(--primary-bg);
+  color: var(--primary);
+  margin-bottom: 12px;
+}
+
+.landing__feature-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--ink);
+  margin: 0 0 6px;
+}
+
+.landing__feature-desc {
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--ink-faint);
+  margin: 0;
+}
+
+/* ── 하단 CTA ── */
+.landing__footer-cta {
+  padding: 12px 20px 28px;
+  text-align: center;
+}
+
+.landing__footer-title {
+  font-size: 17px;
+  font-weight: 800;
+  color: var(--ink);
+  margin: 0 0 16px;
+}
+
+.landing__footer-cta .landing__cta-primary {
+  flex: none;
+  width: 100%;
+}
+
+.landing__footer {
+  padding: 20px;
+  text-align: center;
+}
+
+.landing__footer p {
+  font-size: 11px;
+  color: var(--ink-faint);
+  margin: 0;
+}
+
+/* ============================================
+   데스크탑 — 랜딩페이지형 (여백 + 콘텐츠)
+   ============================================ */
+@media (min-width: 769px) {
+  .landing__nav {
+    padding: 22px 48px;
+  }
+
+  .landing__nav-mark {
+    width: 34px;
+    height: 34px;
+    font-size: 16px;
+    border-radius: 10px;
+  }
+
+  .landing__nav-name {
+    font-size: 18px;
+  }
+
+  .landing__nav-link {
+    font-size: 14.5px;
+  }
+
+  .landing__nav-cta {
+    padding: 11px 20px;
+    font-size: 14.5px;
+    border-radius: 11px;
+  }
+
+  .landing__hero {
+    flex-direction: row;
+    align-items: center;
+    gap: 64px;
+    max-width: 1080px;
+    margin: 0 auto;
+    padding: 56px 48px 72px;
+  }
+
+  .landing__hero-copy {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .landing__eyebrow {
+    font-size: 14px;
+  }
+
+  .landing__headline {
+    font-size: 44px;
+    line-height: 1.22;
+  }
+
+  .landing__sub {
+    font-size: 16.5px;
+  }
+
+  .landing__sub-break {
+    display: block;
+  }
+
+  .landing__hero-actions {
+    margin-top: 32px;
+    max-width: 360px;
+  }
+
+  .landing__cta-primary,
+  .landing__cta-secondary {
+    padding: 16px 20px;
+    font-size: 15.5px;
+  }
+
+  .landing__hero-demo {
+    flex: 1;
+    max-width: 380px;
+  }
+
+  .landing__demo-bubble {
+    font-size: 14.5px;
+  }
+
+  .landing__features {
+    flex-direction: row;
+    max-width: 1080px;
+    margin: 0 auto;
+    padding: 16px 48px 64px;
+    gap: 24px;
+  }
+
+  .landing__feature {
+    flex: 1;
+    padding: 28px;
+  }
+
+  .landing__feature-title {
+    font-size: 16.5px;
+  }
+
+  .landing__feature-desc {
+    font-size: 13.5px;
+  }
+
+  .landing__footer-cta {
+    padding: 24px 48px 64px;
+  }
+
+  .landing__footer-title {
+    font-size: 22px;
+  }
+
+  .landing__footer-cta .landing__cta-primary {
+    width: auto;
+    padding: 16px 40px;
+    display: inline-flex;
+    justify-content: center;
+  }
+}
+
+/* ============================================
+   Signup Page (단계별 회원가입 + 계좌개설)
+   ============================================ */
+.signup {
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+  padding: 0 24px;
+}
+
+.signup__topbar {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 16px 0;
+}
+
+.signup__back {
+  width: 32px;
+  height: 32px;
+  border: none;
+  background: none;
+  font-size: 18px;
+  color: var(--ink);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.signup__progress {
+  flex: 1;
+  height: 4px;
+  background: var(--surface-2);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.signup__progress-bar {
+  height: 100%;
+  background: var(--primary);
+  border-radius: 2px;
+  transition: width 0.25s ease;
+}
+
+.signup__body {
+  flex: 1;
+  padding-top: 8vh;
+}
+
+.signup__title {
+  font-size: 21px;
+  font-weight: 800;
+  color: var(--ink);
+  letter-spacing: -0.01em;
+  margin: 0 0 8px;
+}
+
+.signup__desc {
+  font-size: 13.5px;
+  line-height: 1.55;
+  color: var(--ink-faint);
+  margin: 0;
+}
+
+.signup__field-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 24px;
+}
+
+.signup__success {
+  font-size: 12.5px;
+  color: var(--accent);
+  font-weight: 600;
+  margin: 10px 0 0;
+}
+
+.signup__actions {
+  margin-top: 28px;
+}
+
+.signup__consent-card {
+  margin-top: 24px;
+  background: var(--surface-2);
+  border-radius: 14px;
+  padding: 16px 18px;
+}
+
+.signup__consent-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 13.5px;
+  color: var(--ink-soft);
+  margin: 0;
+  padding: 6px 0;
+}
+
+.signup__consent-row span:last-child {
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.signup__done {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding-top: 4vh;
+}
+
+.signup__done-badge {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: var(--accent-bg);
+  color: var(--accent);
+  font-size: 26px;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 20px;
+}
+
+.signup__account-card {
+  width: 100%;
+  margin-top: 24px;
+  background: var(--primary-bg);
+  border-radius: 16px;
+  padding: 20px;
+  text-align: center;
+}
+
+.signup__account-label {
+  font-size: 12.5px;
+  color: var(--primary-ink);
+  margin: 0 0 8px;
+  font-weight: 600;
+}
+
+.signup__account-no {
+  font-size: 19px;
+  font-weight: 800;
+  color: var(--primary-ink);
+  margin: 0;
+}
+
+@media (min-width: 769px) {
+  .signup {
+    max-width: 420px;
+    margin: 0 auto;
+    padding: 0 20px;
+  }
+
+  .signup__body {
+    padding-top: 10vh;
+  }
 }

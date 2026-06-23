@@ -15,30 +15,21 @@
         <result property="createdAt"      column="created_at"/>
     </resultMap>
 
-    <!-- 거래내역 Insert -->
+    <!-- ── 기존 메서드 (더 이상 호출되지 않음, 호환을 위해 남겨둠) ──
+         TRANSACTION_LOG가 v2.0부터 VIEW로 전환되어 직접 INSERT가 불가능하다.
+         TransferService는 이제 insertWithdrawal/insertDeposit/insertTransfer를 사용한다. -->
     <insert id="insertTransaction">
         INSERT INTO TRANSACTION_LOG (
-            transaction_id,
-            from_account,
-            to_account,
-            amount,
-            tx_type,
-            memo,
-            balance_after,
-            created_at
+            transaction_id, from_account, to_account, amount,
+            tx_type, memo, balance_after, created_at
         ) VALUES (
             'TXN-' || TO_CHAR(SYSDATE, 'YYYYMMDD') || '-' || LPAD(SEQ_TRANSACTION.NEXTVAL, 6, '0'),
-            #{fromAccount},
-            #{toAccount},
-            #{amount},
-            #{txType},
-            #{memo},
-            #{balanceAfter},
-            SYSDATE
+            #{fromAccount}, #{toAccount}, #{amount},
+            #{txType}, #{memo}, #{balanceAfter}, SYSDATE
         )
     </insert>
 
-    <!-- 거래내역 조회 (최신순) -->
+    <!-- 거래내역 조회 (최신순) — TRANSACTION_LOG는 VIEW이므로 조회는 그대로 동작 -->
     <select id="selectByAccountNo" resultMap="transactionResultMap">
         SELECT *
         FROM (
@@ -51,5 +42,56 @@
         )
         WHERE ROWNUM &lt;= #{limit}
     </select>
+
+
+    <!-- ════════════════════════════════════════════
+         v2.0 입출금 원장 분리 구조
+         ════════════════════════════════════════════ -->
+
+    <!-- 채번 -->
+    <select id="nextWithdrawalId" resultType="java.lang.String">
+        SELECT 'WD-' || TO_CHAR(SEQ_WITHDRAWAL.NEXTVAL, 'FM000000') FROM DUAL
+    </select>
+
+    <select id="nextDepositId" resultType="java.lang.String">
+        SELECT 'DP-' || TO_CHAR(SEQ_DEPOSIT.NEXTVAL, 'FM000000') FROM DUAL
+    </select>
+
+    <select id="nextTransferId" resultType="java.lang.String">
+        SELECT 'TR-' || TO_CHAR(SEQ_TRANSFER.NEXTVAL, 'FM000000') FROM DUAL
+    </select>
+
+    <!-- 출금 원장 INSERT -->
+    <insert id="insertWithdrawal">
+        INSERT INTO WITHDRAWAL_LEDGER (
+            withdrawal_id, account_no, amount, balance_after,
+            withdrawal_type, transfer_id, memo, created_at
+        ) VALUES (
+            #{withdrawalId}, #{accountNo}, #{amount}, #{balanceAfter},
+            #{withdrawalType}, #{transferId}, #{memo}, SYSTIMESTAMP
+        )
+    </insert>
+
+    <!-- 입금 원장 INSERT -->
+    <insert id="insertDeposit">
+        INSERT INTO DEPOSIT_LEDGER (
+            deposit_id, account_no, amount, balance_after,
+            deposit_type, transfer_id, memo, created_at
+        ) VALUES (
+            #{depositId}, #{accountNo}, #{amount}, #{balanceAfter},
+            #{depositType}, #{transferId}, #{memo}, SYSTIMESTAMP
+        )
+    </insert>
+
+    <!-- 이체 거래 원장 INSERT — 출금/입금을 연결하는 상위 거래 -->
+    <insert id="insertTransfer">
+        INSERT INTO TRANSFER (
+            transfer_id, from_account, to_account, amount, memo,
+            transfer_type, status, withdrawal_id, deposit_id, created_at
+        ) VALUES (
+            #{transferId}, #{fromAccount}, #{toAccount}, #{amount}, #{memo},
+            #{transferType}, #{status}, #{withdrawalId}, #{depositId}, SYSTIMESTAMP
+        )
+    </insert>
 
 </mapper>

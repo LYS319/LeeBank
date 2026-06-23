@@ -3,8 +3,6 @@ package com.bank.service;
 import com.bank.dto.ReservationDto;
 import com.bank.mapper.AccountMapper;
 import com.bank.mapper.ReservationMapper;
-import com.bank.mapper.TransferMapper;
-import com.bank.dto.TransactionDto;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -20,7 +18,9 @@ public class SchedulerService {
 
     private final ReservationMapper reservationMapper;
     private final AccountMapper accountMapper;
-    private final TransferMapper transferMapper;
+    // 출금/입금/이체 원장 기록 로직(recordLedgerTransfer)을 TransferService와 공유한다.
+    // (정합성 규칙이 한 군데에만 존재해야 즉시이체/예약이체가 서로 다르게 깨질 위험이 없다)
+    private final TransferService transferService;
 
     // 1분마다 실행 — 예약 시간이 된 건들을 처리
     @Scheduled(fixedDelay = 60000)
@@ -75,27 +75,20 @@ public class SchedulerService {
             // (예약 등록 시 이미 balance는 차감됐으므로 hold만 해제)
             accountMapper.decreaseHold(reservation.getFromAccount(), reservation.getAmount());
 
-            // 4. 출금 거래내역 Insert
-            transferMapper.insertTransaction(TransactionDto.builder()
-                    .fromAccount(reservation.getFromAccount())
-                    .toAccount(reservation.getToAccount())
-                    .amount(reservation.getAmount())
-                    .txType("TRANSFER_OUT")
-                    .memo(reservation.getMemo())
-                    .balanceAfter(0L)  // 실시간 잔액 조회 생략
-                    .build());
+            // 4. 출금/입금/이체 원장 INSERT (v2.0)
+            // 이 시점이 바로 실제 돈이 움직인 시점이므로, 여기서 처음으로 원장이 생성된다.
+            var fromAccount = accountMapper.selectByAccountNo(reservation.getFromAccount());
+            Long fromBalanceAfter = fromAccount != null ? fromAccount.getBalance() : 0L;
+            Long toBalanceAfter   = toAccount.getBalance() + reservation.getAmount();
 
-            // 5. 입금 거래내역 Insert
-            transferMapper.insertTransaction(TransactionDto.builder()
-                    .fromAccount(reservation.getFromAccount())
-                    .toAccount(reservation.getToAccount())
-                    .amount(reservation.getAmount())
-                    .txType("TRANSFER_IN")
-                    .memo(reservation.getMemo())
-                    .balanceAfter(toAccount.getBalance() + reservation.getAmount())
-                    .build());
+            transferService.recordLedgerTransfer(
+                    reservation.getFromAccount(), reservation.getToAccount(),
+                    reservation.getAmount(), reservation.getMemo(),
+                    fromBalanceAfter, toBalanceAfter,
+                    "SCHEDULED"
+            );
 
-            // 6. 예약 상태 COMPLETED로 업데이트
+            // 5. 예약 상태 COMPLETED로 업데이트
             reservationMapper.updateStatus(reservationId, "COMPLETED", null);
 
             log.info("예약이체 처리 완료 — reservationId: {}", reservationId);

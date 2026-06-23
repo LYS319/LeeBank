@@ -78,7 +78,7 @@ export default function ChatWindow() {
                 <div className="chat__header-row">
                     <button
                         className="chat__back"
-                        onClick={() => navigate('/')}
+                        onClick={() => navigate('/home')}
                         aria-label="홈으로"
                     >
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none">

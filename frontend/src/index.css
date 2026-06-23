@@ -105,36 +105,31 @@ input {
 }
 
 /* ============================================
-   App Shell — 모바일 웹뷰 레이아웃
+   App Shell — 모바일에서는 앱처럼, 데스크탑에서는 웹사이트처럼
    ============================================ */
 .app-shell {
   width: 100%;
-  max-width: 480px;
-  margin: 0 auto;
   min-height: 100vh;
   min-height: 100dvh;
   background: var(--bg);
   display: flex;
   flex-direction: column;
   position: relative;
-  box-shadow: var(--shadow-lg);
 }
 
-@media (min-width: 481px) {
+/* 모바일 전용: 화면 자체가 좁으니 480px 제한은 의미 없지만,
+   태블릿 폭에서도 모바일 앱처럼 보이도록 480px로 고정 + 카드 느낌의 그림자를 준다. */
+@media (max-width: 768px) {
   .app-shell {
-    min-height: 100vh;
+    max-width: 480px;
+    margin: 0 auto;
+    box-shadow: var(--shadow-lg);
   }
 }
 
-/* 랜딩 / 로그인 / 회원가입 — 모바일에서는 풀스크린 앱처럼,
-   데스크탑에서는 480px 프레임을 벗어나 일반 웹사이트처럼 전체 너비를 쓴다. */
-.app-shell--full {
-  box-shadow: none;
-}
-
+/* 데스크탑: 모든 페이지가 전체 너비를 쓰는 일반 웹사이트처럼 보인다. */
 @media (min-width: 769px) {
-  .app-shell--full {
-    max-width: none;
+  .app-shell {
     background: var(--surface);
   }
 }
@@ -145,6 +140,19 @@ input {
   flex-direction: column;
   padding-bottom: 64px; /* BottomNav 높이 확보 */
   overflow-y: auto;
+}
+
+/* 로그인 후 화면(대시보드/채팅/이체/내역)은 데스크탑에서
+   화면 전체에 퍼지지 않도록 적당한 폭으로 가운데 정렬한다.
+   Home/Login/Signup은 자체적으로 넓은 레이아웃을 쓰므로 이 클래스를 붙이지 않는다. */
+@media (min-width: 769px) {
+  .app-content--boxed {
+    width: 100%;
+    max-width: 720px;
+    margin: 0 auto;
+    padding-left: 24px;
+    padding-right: 24px;
+  }
 }
 
 /* ============================================
@@ -163,6 +171,17 @@ input {
   display: flex;
   align-items: stretch;
   z-index: 100;
+}
+
+/* 모바일에서는 로고를 숨긴다 (하단 탭바에는 자리가 없고, 이미 앱처럼 보여서 불필요) */
+.bottom-nav__brand {
+  display: none;
+}
+
+.bottom-nav__items {
+  display: flex;
+  align-items: stretch;
+  width: 100%;
 }
 
 .bottom-nav__item {
@@ -192,6 +211,77 @@ input {
   display: flex;
   align-items: center;
   justify-content: center;
+}
+
+/* 데스크탑: 하단 탭바 대신 상단 가로 네비게이션으로 전환.
+   실제 은행 웹사이트처럼 화면 위쪽에 로고 + 메뉴를 가로로 배치한다. */
+@media (min-width: 769px) {
+  .app-content {
+    padding-top: 64px; /* 상단 네비 높이만큼 콘텐츠를 내려준다 */
+  }
+
+  .bottom-nav {
+    position: fixed;
+    top: 0;
+    bottom: auto;
+    left: 0;
+    transform: none;
+    width: 100%;
+    max-width: none;
+    height: 64px;
+    border-top: none;
+    border-bottom: 1px solid var(--border);
+    justify-content: space-between;
+    padding: 0 32px;
+  }
+
+  .bottom-nav__brand {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    border: none;
+    background: none;
+    cursor: pointer;
+    padding: 0;
+  }
+
+  .bottom-nav__brand-mark {
+    width: 28px;
+    height: 28px;
+    border-radius: 8px;
+    background: var(--primary);
+    color: white;
+    font-weight: 800;
+    font-size: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .bottom-nav__brand-name {
+    font-size: 16px;
+    font-weight: 800;
+    color: var(--ink);
+    letter-spacing: -0.01em;
+  }
+
+  .bottom-nav__items {
+    width: auto;
+    gap: 8px;
+  }
+
+  .bottom-nav__item {
+    flex: none;
+    flex-direction: row;
+    gap: 8px;
+    padding: 0 20px;
+    font-size: 14px;
+  }
+
+  .bottom-nav__icon {
+    width: 20px;
+    height: 20px;
+  }
 }
 
 /* ============================================
@@ -713,6 +803,23 @@ input {
   padding: 22px 20px 18px;
   background: var(--surface);
   border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.page__back {
+  width: 32px;
+  height: 32px;
+  border: none;
+  background: none;
+  color: var(--ink);
+  cursor: pointer;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-left: -6px;
 }
 
 .page__title {
@@ -1037,6 +1144,12 @@ input {
   flex-direction: column;
   min-height: 100%;
   padding: 0 28px;
+}
+
+/* PageHeader는 자체 좌우 패딩(16px)을 가지므로,
+   .login의 28px 패딩과 중복되지 않도록 좌우 마진을 상쇄한다. */
+.login__header-area {
+  margin: 0 -28px;
 }
 
 .login__brand {
@@ -1671,11 +1784,22 @@ input {
   padding: 0 24px;
 }
 
+/* PageHeader는 자체 좌우 패딩(16px)을 가지므로,
+   .signup의 24px 패딅과 중복되지 않도록 좌우 마진을 상쇄한다. */
+.signup__header-area {
+  margin: 0 -24px;
+}
+
 .signup__topbar {
   display: flex;
   align-items: center;
   gap: 14px;
   padding: 16px 0;
+}
+
+.signup__topbar-spacer {
+  width: 32px;
+  flex-shrink: 0;
 }
 
 .signup__back {
@@ -1816,5 +1940,86 @@ input {
 
   .signup__body {
     padding-top: 10vh;
+  }
+}
+
+/* ============================================
+   Page Header — 모든 페이지 공통 (뒤로가기 + 로고)
+   ============================================ */
+.page-header {
+  display: flex;
+  align-items: center;
+  padding: 14px 16px;
+  gap: 8px;
+}
+
+.page-header__back {
+  width: 32px;
+  height: 32px;
+  border: none;
+  background: none;
+  font-size: 18px;
+  color: var(--ink);
+  cursor: pointer;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.page-header__spacer {
+  width: 32px;
+  flex-shrink: 0;
+}
+
+.page-header__brand {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  padding: 6px;
+}
+
+.page-header__brand-mark {
+  width: 26px;
+  height: 26px;
+  border-radius: 8px;
+  background: var(--primary);
+  color: white;
+  font-weight: 800;
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.page-header__brand-name {
+  font-size: 15px;
+  font-weight: 800;
+  color: var(--ink);
+  letter-spacing: -0.01em;
+}
+
+.page-header__title {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+@media (min-width: 769px) {
+  .page-header {
+    max-width: 720px;
+    margin: 0 auto;
+    width: 100%;
+    padding: 20px 0;
+  }
+
+  .page-header__brand {
+    justify-content: flex-start;
   }
 }

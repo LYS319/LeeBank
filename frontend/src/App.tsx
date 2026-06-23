@@ -9,18 +9,21 @@ import History from "./pages/History";
 import BottomNav from "./components/layout/BottomNav";
 import RequireAuth from "./components/layout/RequireAuth";
 
-// 모바일 앱쉘(고정폭+그림자) 없이 전체 너비를 쓰는 페이지들.
-// 데스크탑에서는 일반 웹사이트처럼, 모바일에서는 풀스크린으로 보여준다.
-const FULL_WIDTH_PATHS = ["/", "/login", "/signup"];
+// 로그인 전 화면 (네비게이션 바를 보여주지 않는다)
+const AUTH_PATHS = ["/", "/login", "/signup"];
 
+// 모바일: 모든 페이지가 항상 480px 앱 프레임처럼 보인다 (app-shell이 미디어쿼리로 처리).
+// 데스크탑: 모든 페이지가 전체 너비를 쓰는 일반 웹사이트처럼 보인다.
 function Shell() {
   const location = useLocation();
-  const isFullWidth = FULL_WIDTH_PATHS.includes(location.pathname);
-  const hideNav = isFullWidth;
+  const hideNav = AUTH_PATHS.includes(location.pathname);
 
   return (
-    <div className={isFullWidth ? "app-shell app-shell--full" : "app-shell"}>
-      <div className="app-content" style={{ paddingBottom: hideNav ? 0 : 64 }}>
+    <div className="app-shell">
+      <div
+        className={hideNav ? "app-content" : "app-content app-content--boxed"}
+        style={{ paddingBottom: hideNav ? 0 : undefined }}
+      >
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/login" element={<Login />} />

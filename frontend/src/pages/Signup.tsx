@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { authApi } from "../api";
+import PageHeader from "../components/layout/PageHeader";
 
 type Step = 1 | 2 | 3 | 4 | 5;
 
@@ -26,7 +27,14 @@ export default function Signup() {
   const [issuedAccountNo, setIssuedAccountNo] = useState("");
 
   const goNext = () => setStep((s) => (Math.min(s + 1, 5) as Step));
-  const goBack = () => setStep((s) => (Math.max(s - 1, 1) as Step));
+  const goBack = () => {
+    if (step === 1) {
+      // 회원가입 1단계에서 뒤로가기 → 이전 화면(보통 첫 화면)으로 나간다
+      navigate(-1);
+      return;
+    }
+    setStep((s) => (Math.max(s - 1, 1) as Step));
+  };
 
   // ── 1단계: 아이디 중복 체크 ──
   const handleCheckId = async () => {
@@ -51,10 +59,17 @@ export default function Signup() {
     }
   };
 
+  // 비밀번호는 이체 시 사용하는 핀패드와 형식을 맞추기 위해 숫자만, 6자리로 받는다.
+  const handlePasswordInput = (value: string, target: "password" | "confirm") => {
+    const digitsOnly = value.replace(/\D/g, "").slice(0, 6);
+    if (target === "password") setPassword(digitsOnly);
+    else setPasswordConfirm(digitsOnly);
+  };
+
   // ── 2단계 → 3단계 ──
   const handlePasswordNext = () => {
-    if (password.length < 4) {
-      setError("비밀번호는 4자 이상으로 입력해주세요.");
+    if (password.length !== 6) {
+      setError("비밀번호는 숫자 6자리로 입력해주세요.");
       return;
     }
     if (password !== passwordConfirm) {
@@ -98,22 +113,22 @@ export default function Signup() {
 
   return (
     <div className="signup">
-      {/* 상단 바: 뒤로가기 + 진행률 */}
-      <div className="signup__topbar">
-        {step > 1 && step < 5 ? (
+      <div className="signup__header-area">
+        <PageHeader title="회원가입" hideBack />
+      </div>
+
+      {/* 진행률 바: 단계가 진행될수록 채워진다 (완료 화면에서는 숨김) */}
+      {step < 5 && (
+        <div className="signup__topbar">
           <button className="signup__back" onClick={goBack} aria-label="이전 단계">
             ←
           </button>
-        ) : (
-          <span />
-        )}
-        {step < 5 && (
           <div className="signup__progress">
             <div className="signup__progress-bar" style={{ width: `${(step / 4) * 100}%` }} />
           </div>
-        )}
-        <span />
-      </div>
+          <span className="signup__topbar-spacer" />
+        </div>
+      )}
 
       <div className="signup__body">
         {/* 1단계: 아이디 */}
@@ -154,15 +169,17 @@ export default function Signup() {
         {step === 2 && (
           <>
             <h1 className="signup__title">비밀번호를 만들어주세요</h1>
-            <p className="signup__desc">거래할 때도 이 비밀번호를 사용해요.</p>
+            <p className="signup__desc">이체할 때도 이 숫자 6자리를 사용해요.</p>
             <div className="signup__field-stack">
               <div className="form-group">
                 <input
                   className="form-input"
                   type="password"
+                  inputMode="numeric"
                   value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="비밀번호"
+                  onChange={(e) => handlePasswordInput(e.target.value, "password")}
+                  placeholder="숫자 6자리"
+                  maxLength={6}
                   autoFocus
                 />
               </div>
@@ -170,15 +187,17 @@ export default function Signup() {
                 <input
                   className="form-input"
                   type="password"
+                  inputMode="numeric"
                   value={passwordConfirm}
-                  onChange={(e) => setPasswordConfirm(e.target.value)}
-                  placeholder="비밀번호 확인"
+                  onChange={(e) => handlePasswordInput(e.target.value, "confirm")}
+                  placeholder="숫자 6자리 확인"
+                  maxLength={6}
                 />
               </div>
             </div>
             {error && <p className="auth-sheet__error">{error}</p>}
             <div className="signup__actions">
-              <button className="login__submit" onClick={handlePasswordNext} disabled={!password || !passwordConfirm}>
+              <button className="login__submit" onClick={handlePasswordNext} disabled={password.length !== 6 || passwordConfirm.length !== 6}>
                 다음
               </button>
             </div>

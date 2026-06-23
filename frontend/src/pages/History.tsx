@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { accountApi } from "../api";
 import { useAuthStore } from "../stores/authStore";
 import type { Account, Transaction } from "../types/index.ts";
@@ -31,6 +32,7 @@ function formatDate(iso: string) {
 }
 
 export default function History() {
+  const navigate = useNavigate();
   const { accountNo } = useAuthStore();
   const [account, setAccount] = useState<Account | null>(null);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
@@ -43,14 +45,17 @@ export default function History() {
       setStatus("error");
       return;
     }
+    // targetAccount가 string임이 확정된 시점의 값을 별도로 캡처한다.
+    // (async function 내부에서는 TypeScript가 위의 null 체크를 좁혀 추론하지 못하기 때문)
+    const account: string = targetAccount;
     let mounted = true;
 
     async function load() {
       setStatus("loading");
       try {
         const [accountRes, historyRes] = await Promise.all([
-          accountApi.getAccount(targetAccount),
-          accountApi.getHistory(targetAccount, 20),
+          accountApi.getAccount(account),
+          accountApi.getHistory(account, 20),
         ]);
         if (!mounted) return;
         setAccount(accountRes.data);
@@ -73,6 +78,11 @@ export default function History() {
   return (
     <div className="page">
       <header className="page__header">
+        <button className="page__back" onClick={() => navigate("/home")} aria-label="홈으로">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+            <path d="M15 18l-6-6 6-6" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </button>
         <h1 className="page__title">거래내역</h1>
       </header>
 

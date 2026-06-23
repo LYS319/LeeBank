@@ -2,7 +2,6 @@ package com.bank.service;
 
 import com.bank.dto.AccountDto;
 import com.bank.dto.ReservationDto;
-import com.bank.dto.TransactionDto;
 import com.bank.dto.TransferRequest;
 import com.bank.dto.TransferResponse;
 import com.bank.mapper.AccountMapper;
@@ -18,17 +17,17 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 @RequiredArgsConstructor
 public class TransferService {
-	
+
 	private final AccountMapper accountMapper;
 	private final TransferMapper transferMapper;
 	private final ReservationMapper reservationMapper;
-	
+
 	// =====================================
 	// 즉시이체
 	// =====================================
 	@Transactional
 	public TransferResponse immediateTransfer(TransferRequest request) {
-		
+
 		// 1. 출금 계좌 조회
 		AccountDto fromAccount = accountMapper.selectByAccountNo(request.getFromAccount());
 		if (fromAccount == null) {
@@ -65,31 +64,21 @@ public class TransferService {
 		if (added == 0) {
 			throw new RuntimeException("잔액 입금 실패 - Rollback");
 		}
-		// 6. 출금 거래내역 Insert
+
 		Long remainingBalance = fromAccount.getBalance() - request.getAmount();
-		
-		transferMapper.insertTransaction(TransactionDto.builder()
-				.fromAccount(request.getFromAccount())
-				.toAccount(request.getToAccount())
-				.amount(request.getAmount())
-				.txType("TRANSFER_OUT")
-				.memo(request.getMemo())
-				.balanceAfter(remainingBalance)
-				.build());
-		
-		// 7. 입금 거래내역 Insert
-		transferMapper.insertTransaction(TransactionDto.builder()
-				.fromAccount(request.getFromAccount())
-				.toAccount(request.getToAccount())
-				.amount(request.getAmount())
-				.txType("TRANSFER_IN")
-				.memo(request.getMemo())
-				.balanceAfter(toAccount.getBalance() + request.getAmount())
-				.build());
-		
+		Long updatedToBalance  = toAccount.getBalance() + request.getAmount();
+
+		// 6. 출금/입금/이체 원장 INSERT (v2.0 — 정합성을 위해 셋이 항상 같은 트랜잭션에서 생성된다)
+		recordLedgerTransfer(
+				request.getFromAccount(), request.getToAccount(),
+				request.getAmount(), request.getMemo(),
+				remainingBalance, updatedToBalance,
+				"IMMEDIATE"
+		);
+
 		log.info("즉시이체 완료 - from: {}, to: {}, amount: {}",
 				request.getFromAccount(), request.getToAccount(), request.getAmount());
-		
+
 		return TransferResponse.builder()
 				.success(true)
 				.remainingBalance(remainingBalance)
@@ -101,7 +90,7 @@ public class TransferService {
     // =============================================
 	@Transactional
 	public TransferResponse scheduleTransfer(TransferRequest request) {
-		
+
 		//1. 출금 계좌 조회
 		AccountDto fromAccount = accountMapper.selectByAccountNo(request.getFromAccount());
 		if (fromAccount == null) {
@@ -120,20 +109,24 @@ public class TransferService {
 					.message("에약 금액만큼의 잔액이 부족합니다.")
 					.build();
 		}
-		
+
 		// 3. 선차감 (balance 차감)
 		int deducted = accountMapper.deductBalance(request.getFromAccount(),request.getAmount());
 		if (deducted == 0) {
 			throw new RuntimeException("선차감 실패 - Rollback");
 		}
-		
+
 		// 4. hold_amount 증가
 		int held = accountMapper.increaseHold(request.getFromAccount(), request.getAmount());
 		if (held == 0) {
 			throw new RuntimeException("Hold 처리 실패 - Rollback");
 		}
-		
+
 		// 5. 예약대기 테이블 Insert
+		// 주의: 이 시점에는 아직 실제로 입금이 일어나지 않았으므로
+		//       WITHDRAWAL_LEDGER/DEPOSIT_LEDGER/TRANSFER에는 아무것도 기록하지 않는다.
+		//       (선차감은 hold_amount로만 표현되고, 실제 거래 원장은
+		//        SchedulerService가 예약을 실행하는 시점에 비로소 생성된다)
 		reservationMapper.insertReservation(ReservationDto.builder()
 				.fromAccount(request.getFromAccount())
 				.toAccount(request.getToAccount())
@@ -141,18 +134,49 @@ public class TransferService {
 				.memo(request.getMemo())
 				.scheduledAt(request.getScheduledAt())
 				.build());
-		
+
 		long remainingBalance = fromAccount.getBalance() - request.getAmount();
-		
+
 		log.info("예약이체 등록 완료 - from: {}, to: {}, amount: {}, scheduledAt: {}",
 				request.getFromAccount(), request.getToAccount(),
 				request.getAmount(), request.getScheduledAt());
-		
+
 		return TransferResponse.builder()
 				.success(true)
 				.remainingBalance(remainingBalance)
 				.scheduledAt(request.getScheduledAt())
 				.message("예약이 완료되었습니다.")
 				.build();
+	}
+
+	// =============================================
+	// 출금/입금/이체 원장 기록 (v2.0)
+	// 정합성 원칙: TRANSFER 1건 = WITHDRAWAL_LEDGER 1건 + DEPOSIT_LEDGER 1건이
+	// 반드시 같은 트랜잭션 안에서 함께 생성되어야 한다.
+	// 즉시이체와 예약이체 실행(SchedulerService) 양쪽에서 공통으로 사용한다.
+	// =============================================
+	public void recordLedgerTransfer(String fromAccount, String toAccount,
+									  Long amount, String memo,
+									  Long fromBalanceAfter, Long toBalanceAfter,
+									  String transferType) {
+
+		String withdrawalId = transferMapper.nextWithdrawalId();
+		String depositId    = transferMapper.nextDepositId();
+		String transferId   = transferMapper.nextTransferId();
+
+		transferMapper.insertWithdrawal(
+				withdrawalId, fromAccount, amount, fromBalanceAfter,
+				"TRANSFER", transferId, memo
+		);
+
+		transferMapper.insertDeposit(
+				depositId, toAccount, amount, toBalanceAfter,
+				"TRANSFER", transferId, memo
+		);
+
+		transferMapper.insertTransfer(
+				transferId, fromAccount, toAccount, amount, memo,
+				transferType, "COMPLETED", withdrawalId, depositId
+		);
 	}
 }

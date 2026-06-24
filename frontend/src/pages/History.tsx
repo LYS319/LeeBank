@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { accountApi } from "../api";
 import { useAuthStore } from "../stores/authStore";
-import type { Account, Transaction } from "../types/index.ts";
+import type { Account, Transaction, Reservation } from "../types/index.ts";
 
 function ArrowUpIcon() {
   return (
@@ -20,6 +20,15 @@ function ArrowDownIcon() {
   );
 }
 
+function ClockIcon() {
+  return (
+    <svg width="17" height="17" viewBox="0 0 24 24" fill="none">
+      <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="1.8" />
+      <path d="M12 7v5l3 3" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+    </svg>
+  );
+}
+
 function formatDate(iso: string) {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return iso;
@@ -31,11 +40,32 @@ function formatDate(iso: string) {
   return d.toLocaleDateString("ko-KR", { month: "short", day: "numeric" });
 }
 
+// 예약이체 상태를 한글 라벨 + 색상 변형으로 변환
+function reservationStatusInfo(status: Reservation["status"]) {
+  switch (status) {
+    case "PENDING":
+      return { label: "대기중", variant: "pending" as const };
+    case "COMPLETED":
+      return { label: "완료", variant: "completed" as const };
+    case "FAILED":
+      return { label: "실패", variant: "failed" as const };
+    case "CANCELLED":
+      return { label: "취소됨", variant: "failed" as const };
+    default:
+      return { label: status, variant: "pending" as const };
+  }
+}
+
+type Tab = "transactions" | "reservations";
+
 export default function History() {
   const navigate = useNavigate();
   const { accountNo } = useAuthStore();
+  const [tab, setTab] = useState<Tab>("transactions");
+
   const [account, setAccount] = useState<Account | null>(null);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [reservations, setReservations] = useState<Reservation[]>([]);
   const [status, setStatus] = useState<"loading" | "ready" | "error">("loading");
 
   const targetAccount = accountNo;
@@ -53,16 +83,24 @@ export default function History() {
     async function load() {
       setStatus("loading");
       try {
-        const [accountRes, historyRes] = await Promise.all([
+        const [accountRes, historyRes, reservationRes] = await Promise.all([
           accountApi.getAccount(account),
           accountApi.getHistory(account, 20),
+          accountApi.getReservations(account, 20),
         ]);
         if (!mounted) return;
         setAccount(accountRes.data);
-        const list = Array.isArray(historyRes.data)
+
+        const txList = Array.isArray(historyRes.data)
           ? historyRes.data
           : historyRes.data?.content ?? [];
-        setTransactions(list);
+        setTransactions(txList);
+
+        const rsvList = Array.isArray(reservationRes.data)
+          ? reservationRes.data
+          : reservationRes.data?.content ?? [];
+        setReservations(rsvList);
+
         setStatus("ready");
       } catch {
         if (mounted) setStatus("error");
@@ -117,45 +155,103 @@ export default function History() {
               <p className="balance-hero__account">{account?.accountNo}</p>
             </div>
 
-            <p className="history-section-label">최근 거래</p>
+            {/* 일반 이체 / 예약 이체 탭 */}
+            <div className="form-toggle" style={{ margin: "16px 0" }}>
+              <button
+                className={`form-toggle__btn${tab === "transactions" ? " active" : ""}`}
+                onClick={() => setTab("transactions")}
+              >
+                일반 이체
+              </button>
+              <button
+                className={`form-toggle__btn${tab === "reservations" ? " active" : ""}`}
+                onClick={() => setTab("reservations")}
+              >
+                예약 이체
+              </button>
+            </div>
 
-            {transactions.length === 0 ? (
-              <div className="state-block">
-                <div className="state-block__icon">
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-                    <path d="M4 6h16M4 12h10M4 18h7" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-                  </svg>
+            {/* ── 일반 이체 탭 ── */}
+            {tab === "transactions" && (
+              transactions.length === 0 ? (
+                <div className="state-block">
+                  <div className="state-block__icon">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                      <path d="M4 6h16M4 12h10M4 18h7" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+                    </svg>
+                  </div>
+                  <p className="state-block__title">아직 거래내역이 없어요</p>
                 </div>
-                <p className="state-block__title">아직 거래내역이 없어요</p>
-              </div>
-            ) : (
-              <div className="history-list">
-                {transactions.map((t) => {
-                  const isOut = t.type === "TRANSFER_OUT";
-                  return (
-                    <div className="history-item" key={t.transactionId}>
-                      <span className={`history-item__icon history-item__icon--${isOut ? "out" : "in"}`}>
-                        {isOut ? <ArrowUpIcon /> : <ArrowDownIcon />}
-                      </span>
-                      <div className="history-item__main">
-                        <p className="history-item__name">
-                          {t.counterpartName || t.memo || (isOut ? "이체" : "입금")}
-                        </p>
-                        <p className="history-item__meta">{formatDate(t.createdAt)}</p>
-                      </div>
-                      <div className="history-item__amount-block">
-                        <div className={`history-item__amount num-display history-item__amount--${isOut ? "out" : "in"}`}>
-                          {isOut ? "-" : "+"}
-                          {t.amount.toLocaleString("ko-KR")}원
+              ) : (
+                <div className="history-list">
+                  {transactions.map((t) => {
+                    const isOut = t.type === "TRANSFER_OUT";
+                    return (
+                      <div className="history-item" key={t.transactionId}>
+                        <span className={`history-item__icon history-item__icon--${isOut ? "out" : "in"}`}>
+                          {isOut ? <ArrowUpIcon /> : <ArrowDownIcon />}
+                        </span>
+                        <div className="history-item__main">
+                          <p className="history-item__name">
+                            {t.counterpartName || t.memo || (isOut ? "이체" : "입금")}
+                          </p>
+                          <p className="history-item__meta">{formatDate(t.createdAt)}</p>
                         </div>
-                        <div className="history-item__balance num-display">
-                          잔액 {t.balanceAfter.toLocaleString("ko-KR")}원
+                        <div className="history-item__amount-block">
+                          <div className={`history-item__amount num-display history-item__amount--${isOut ? "out" : "in"}`}>
+                            {isOut ? "-" : "+"}
+                            {t.amount.toLocaleString("ko-KR")}원
+                          </div>
+                          <div className="history-item__balance num-display">
+                            잔액 {t.balanceAfter.toLocaleString("ko-KR")}원
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  );
-                })}
-              </div>
+                    );
+                  })}
+                </div>
+              )
+            )}
+
+            {/* ── 예약 이체 탭 ── */}
+            {tab === "reservations" && (
+              reservations.length === 0 ? (
+                <div className="state-block">
+                  <div className="state-block__icon"><ClockIcon /></div>
+                  <p className="state-block__title">등록된 예약이체가 없어요</p>
+                </div>
+              ) : (
+                <div className="history-list">
+                  {reservations.map((r) => {
+                    const isOut = r.fromAccount === account?.accountNo;
+                    const { label, variant } = reservationStatusInfo(r.status);
+                    return (
+                      <div className="history-item" key={r.reservationId}>
+                        <span className={`history-item__icon history-item__icon--${isOut ? "out" : "in"}`}>
+                          {isOut ? <ArrowUpIcon /> : <ArrowDownIcon />}
+                        </span>
+                        <div className="history-item__main">
+                          <p className="history-item__name">
+                            {r.memo || (isOut ? "예약이체" : "예약입금")}
+                          </p>
+                          <p className="history-item__meta">
+                            {formatDate(r.scheduledAt)} 실행 예정
+                          </p>
+                        </div>
+                        <div className="history-item__amount-block">
+                          <div className={`history-item__amount num-display history-item__amount--${isOut ? "out" : "in"}`}>
+                            {isOut ? "-" : "+"}
+                            {r.amount.toLocaleString("ko-KR")}원
+                          </div>
+                          <span className={`reservation-badge reservation-badge--${variant}`}>
+                            {label}
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )
             )}
           </>
         )}

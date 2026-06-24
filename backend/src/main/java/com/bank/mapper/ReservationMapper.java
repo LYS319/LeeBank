@@ -19,4 +19,9 @@ public interface ReservationMapper {
     int updateStatus(@Param("reservationId") String reservationId,
                      @Param("status") String status,
                      @Param("failReason") String failReason);
+
+    // 계좌의 예약이체 목록 조회 — 본인이 보낸 건 + 받을 건 모두 포함, 최신순
+    // (거래내역 화면의 "예약 이체" 탭에서 사용)
+    List<ReservationDto> selectByAccountNo(@Param("accountNo") String accountNo,
+                                           @Param("limit") int limit);
 }

@@ -107,7 +107,7 @@ export default function Dashboard() {
             <span className="dash__quick-icon"><SendIcon /></span>
             <span className="dash__quick-label">이체</span>
           </button>
-          <button className="dash__quick-item" onClick={() => navigate("/transfer")}>
+          <button className="dash__quick-item" onClick={() => navigate("/transfer/schedule")}>
             <span className="dash__quick-icon"><ClockIcon /></span>
             <span className="dash__quick-label">예약이체</span>
           </button>

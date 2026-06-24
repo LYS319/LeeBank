@@ -1,11 +1,16 @@
-import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import TransferForm from "../components/transfer/TransferForm";
-import ScheduleForm from "../components/transfer/ScheduleForm";
 
-export default function Transfer() {
+interface Props {
+  /** "immediate"면 즉시이체 화면만, "schedule"이면 예약이체 화면만 보여준다.
+   *  Dashboard의 "이체"/"예약이체" 버튼이 각각 다른 경로(/transfer, /transfer/schedule)로
+   *  연결되어 있으므로, 같은 페이지 안에서 토글로 전환할 필요가 없다. */
+  mode: "immediate" | "schedule";
+}
+
+export default function Transfer({ mode }: Props) {
   const navigate = useNavigate();
-  const [mode, setMode] = useState<"immediate" | "schedule">("immediate");
+  const title = mode === "immediate" ? "이체" : "예약이체";
 
   return (
     <div className="page">
@@ -15,27 +20,10 @@ export default function Transfer() {
             <path d="M15 18l-6-6 6-6" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
         </button>
-        <h1 className="page__title">이체</h1>
+        <h1 className="page__title">{title}</h1>
       </header>
 
-      <div style={{ padding: "16px 20px 0" }}>
-        <div className="form-toggle">
-          <button
-            className={`form-toggle__btn${mode === "immediate" ? " active" : ""}`}
-            onClick={() => setMode("immediate")}
-          >
-            바로 보내기
-          </button>
-          <button
-            className={`form-toggle__btn${mode === "schedule" ? " active" : ""}`}
-            onClick={() => setMode("schedule")}
-          >
-            예약 보내기
-          </button>
-        </div>
-      </div>
-
-      {mode === "immediate" ? <TransferForm mode="immediate" /> : <ScheduleForm />}
+      <TransferForm mode={mode} />
     </div>
   );
 }

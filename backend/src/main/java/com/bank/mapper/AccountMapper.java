@@ -12,6 +12,8 @@ public interface AccountMapper {
 
     // 회원ID로 계좌 조회 (로그인 후 본인 계좌 찾기용)
     AccountDto selectByMemberId(@Param("memberId") String memberId);
+    
+    AccountDto selectByAccountNoForUpdate(@Param("accountNo") String accountNo);
 
     // 잔액 차감 (즉시이체 / 예약이체 선차감)
     int deductBalance(@Param("accountNo") String accountNo,

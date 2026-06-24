@@ -49,7 +49,15 @@ function Shell() {
             path="/transfer"
             element={
               <RequireAuth>
-                <Transfer />
+                <Transfer mode="immediate" />
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="/transfer/schedule"
+            element={
+              <RequireAuth>
+                <Transfer mode="schedule" />
               </RequireAuth>
             }
           />

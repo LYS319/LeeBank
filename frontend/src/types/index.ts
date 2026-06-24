@@ -46,3 +46,16 @@ export interface ResultCardData {
     amount?: number;
     rows: { label: string; value: string }[];
 }
+
+export interface Reservation {
+    reservationId: string;
+    fromAccount: string;
+    toAccount: string;
+    amount: number;
+    memo: string;
+    scheduledAt: string;
+    status: 'PENDING' | 'COMPLETED' | 'FAILED' | 'CANCELLED';
+    createdAt: string;
+    completedAt?: string;
+    failReason?: string;
+}

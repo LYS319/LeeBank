@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { authApi, accountApi } from "../api";
 import { useAuthStore } from "../stores/authStore";
+import PageHeader from "../components/layout/PageHeader";
 
 export default function Login() {
   const navigate = useNavigate();
@@ -13,6 +14,13 @@ export default function Login() {
   const [isLoading, setIsLoading] = useState(false);
 
   const canSubmit = memberId.trim() && password.trim();
+
+  // 거래 비밀번호는 회원가입 때와 동일하게 숫자 6자리로 통일한다.
+  // (이체 시 사용하는 핀패드 입력 형식과 일치시켜야 한다)
+  const handlePasswordChange = (value: string) => {
+    const digitsOnly = value.replace(/\D/g, "").slice(0, 6);
+    setPassword(digitsOnly);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -36,7 +44,7 @@ export default function Login() {
       const accountNo = accountRes.data.accountNo;
 
       login(memberId.trim(), accountNo, ownerName);
-      navigate("/", { replace: true });
+      navigate("/home", { replace: true });
     } catch (err: unknown) {
       const e = err as { response?: { status?: number; data?: { message?: string } } };
       if (e.response?.status === 401) {
@@ -53,6 +61,10 @@ export default function Login() {
 
   return (
     <div className="login">
+      <div className="login__header-area">
+        <PageHeader />
+      </div>
+
       <div className="login__brand">
         <div className="login__brand-mark">B</div>
         <h1 className="login__brand-name">LeeBank</h1>
@@ -76,10 +88,12 @@ export default function Login() {
           <input
             className="form-input"
             type="password"
+            inputMode="numeric"
             value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            placeholder="비밀번호를 입력하세요"
+            onChange={(e) => handlePasswordChange(e.target.value)}
+            placeholder="숫자 6자리"
             autoComplete="current-password"
+            maxLength={6}
           />
         </div>
 
@@ -89,10 +103,6 @@ export default function Login() {
           {isLoading ? "확인하는 중…" : "로그인"}
         </button>
       </form>
-
-      <p className="login__hint">
-        테스트 계정 — 아이디 <b>user001</b> · 비밀번호 <b>Bank1234</b>
-      </p>
     </div>
   );
 }

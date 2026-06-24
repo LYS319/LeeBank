@@ -1,24 +1,36 @@
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
-import Login from "./pages/Login";
-import Dashboard from "./pages/Dashboard";
 import Home from "./pages/Home";
+import Login from "./pages/Login";
+import Signup from "./pages/Signup";
+import Dashboard from "./pages/Dashboard";
+import Chat from "./pages/Chat";
 import Transfer from "./pages/Transfer";
 import History from "./pages/History";
 import BottomNav from "./components/layout/BottomNav";
 import RequireAuth from "./components/layout/RequireAuth";
 
+// 로그인 전 화면 (네비게이션 바를 보여주지 않는다)
+const AUTH_PATHS = ["/", "/login", "/signup"];
+
+// 모바일: 모든 페이지가 항상 480px 앱 프레임처럼 보인다 (app-shell이 미디어쿼리로 처리).
+// 데스크탑: 모든 페이지가 전체 너비를 쓰는 일반 웹사이트처럼 보인다.
 function Shell() {
   const location = useLocation();
-  const hideNav = location.pathname === "/login";
+  const hideNav = AUTH_PATHS.includes(location.pathname);
 
   return (
     <div className="app-shell">
-      <div className="app-content" style={{ paddingBottom: hideNav ? 0 : 64 }}>
+      <div
+        className={hideNav ? "app-content" : "app-content app-content--boxed"}
+        style={{ paddingBottom: hideNav ? 0 : undefined }}
+      >
         <Routes>
+          <Route path="/" element={<Home />} />
           <Route path="/login" element={<Login />} />
+          <Route path="/signup" element={<Signup />} />
 
           <Route
-            path="/"
+            path="/home"
             element={
               <RequireAuth>
                 <Dashboard />
@@ -29,7 +41,7 @@ function Shell() {
             path="/chat"
             element={
               <RequireAuth>
-                <Home />
+                <Chat />
               </RequireAuth>
             }
           />

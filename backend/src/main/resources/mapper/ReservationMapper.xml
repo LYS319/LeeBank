@@ -53,10 +53,24 @@
     <!-- 예약 상태 업데이트 -->
     <update id="updateStatus">
         UPDATE RESERVATION
-        SET status       = #{status},
-            completed_at = SYSDATE,
-            fail_reason  = #{failReason}
+        SET status   = #{status},
+        completed_at = SYSDATE,
+        fail_reason  = #{failReason, jdbcType=VARCHAR}
         WHERE reservation_id = #{reservationId}
     </update>
+
+    <!-- 계좌의 예약이체 목록 조회 — 본인이 보낸 건(from) + 받을 건(to) 모두, 최신순 -->
+    <select id="selectByAccountNo" resultMap="reservationResultMap">
+        SELECT *
+        FROM (
+            SELECT reservation_id, from_account, to_account, amount,
+                   memo, scheduled_at, status, created_at, completed_at, fail_reason
+            FROM RESERVATION
+            WHERE from_account = #{accountNo}
+               OR to_account   = #{accountNo}
+            ORDER BY scheduled_at DESC
+        )
+        WHERE ROWNUM &lt;= #{limit}
+    </select>
 
 </mapper>

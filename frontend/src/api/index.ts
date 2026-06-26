@@ -21,7 +21,10 @@ apiClient.interceptors.request.use((config) => {
 apiClient.interceptors.response.use(
     (response) => response,
     (error) => {
-        if (error.response?.status === 401) {
+        // 거래 비밀번호 검증(confirm)에서 발생한 401은
+        // 거래 인증 실패일 뿐, 로그인 세션 만료가 아니므로 자동 로그아웃 대상에서 제외한다.
+        const isConfirmRequest = error.config?.url?.includes('/ai/chat/confirm');
+        if (error.response?.status === 401 && !isConfirmRequest) {
             sessionStorage.removeItem('sessionId');
             window.location.href = '/login';
         }
@@ -46,12 +49,10 @@ export const backendClient = axios.create({
 });
 
 export const accountApi = {
-    getAccount: (accountNo: string) =>
-        backendClient.get(`/api/account/${accountNo}`),
+    getAccount: (accountNo: string) => backendClient.get(`/api/account/${accountNo}`),
 
     // 회원ID로 보유한 모든 계좌 목록 조회 (한 회원이 여러 계좌를 가질 수 있어 배열로 응답)
-    getAccountByMember: (memberId: string) =>
-        backendClient.get(`/api/account/by-member/${memberId}`),
+    getAccountByMember: (memberId: string) => backendClient.get(`/api/account/by-member/${memberId}`),
 
     getHistory: (accountNo: string, limit = 20) =>
         backendClient.get(`/api/account/history/${accountNo}`, { params: { limit } }),
@@ -61,18 +62,15 @@ export const accountApi = {
         backendClient.get(`/api/reservation/${accountNo}`, { params: { limit } }),
 
     // 계좌 추가 개설 — 이미 가입된 회원이 새 입출금 계좌를 하나 더 만든다.
-    openAccount: (memberId: string) =>
-        backendClient.post('/api/account/open', { memberId }),
+    openAccount: (memberId: string) => backendClient.post('/api/account/open', { memberId }),
 };
 
 export const authApi = {
     // 로그인 — Spring AuthController POST /api/auth/verify 호출
-    verify: (memberId: string, password: string) =>
-        backendClient.post('/api/auth/verify', { memberId, password }),
+    verify: (memberId: string, password: string) => backendClient.post('/api/auth/verify', { memberId, password }),
 
     // 아이디 중복 체크
-    checkMemberId: (memberId: string) =>
-        backendClient.get(`/api/auth/check-id/${memberId}`),
+    checkMemberId: (memberId: string) => backendClient.get(`/api/auth/check-id/${memberId}`),
 
     // 회원가입 + 계좌개설(첫 계좌)
     signup: (payload: { memberId: string; password: string; name: string; phone: string }) =>

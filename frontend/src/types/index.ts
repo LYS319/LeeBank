@@ -15,8 +15,22 @@ export interface Account {
     accountNo: string;
     ownerName: string;
     balance: number;
+    holdAmount: number;
     bankCode: string;
     bankName: string;
+}
+
+export interface Reservation {
+    reservationId: string;
+    fromAccount: string;
+    toAccount: string;
+    amount: number;
+    memo: string;
+    scheduledAt: string;
+    status: 'PENDING' | 'COMPLETED' | 'FAILED' | 'CANCELLED';
+    createdAt: string;
+    completedAt?: string;
+    failReason?: string;
 }
 
 export interface Transaction {
@@ -45,17 +59,4 @@ export interface ResultCardData {
     kind: ResultCardKind;
     amount?: number;
     rows: { label: string; value: string }[];
-}
-
-export interface Reservation {
-    reservationId: string;
-    fromAccount: string;
-    toAccount: string;
-    amount: number;
-    memo: string;
-    scheduledAt: string;
-    status: 'PENDING' | 'COMPLETED' | 'FAILED' | 'CANCELLED';
-    createdAt: string;
-    completedAt?: string;
-    failReason?: string;
 }

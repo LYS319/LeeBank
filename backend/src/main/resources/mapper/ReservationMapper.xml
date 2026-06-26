@@ -51,11 +51,13 @@
     </select>
 
     <!-- 예약 상태 업데이트 -->
+    <!-- failReason은 성공 시 null이 들어올 수 있으므로 jdbcType을 명시해야 한다.
+         (Oracle JDBC는 자바 null만으로는 컬럼 타입을 추론하지 못해 바인딩 오류가 날 수 있다) -->
     <update id="updateStatus">
         UPDATE RESERVATION
         SET status       = #{status},
             completed_at = SYSDATE,
-            fail_reason  = #{failReason}
+            fail_reason  = #{failReason, jdbcType=VARCHAR}
         WHERE reservation_id = #{reservationId}
     </update>
 

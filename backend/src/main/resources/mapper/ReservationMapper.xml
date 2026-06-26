@@ -55,9 +55,9 @@
          (Oracle JDBC는 자바 null만으로는 컬럼 타입을 추론하지 못해 바인딩 오류가 날 수 있다) -->
     <update id="updateStatus">
         UPDATE RESERVATION
-        SET status       = #{status},
-            completed_at = SYSDATE,
-            fail_reason  = #{failReason, jdbcType=VARCHAR}
+        SET status   = #{status},
+        completed_at = SYSDATE,
+        fail_reason  = #{failReason, jdbcType=VARCHAR}
         WHERE reservation_id = #{reservationId}
     </update>
 

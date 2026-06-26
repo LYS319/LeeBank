@@ -10,6 +10,7 @@ import com.bank.mapper.ReservationMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
 
 
@@ -25,8 +26,7 @@ public class TransferService {
 	// =====================================
 	// 즉시이체
 	// =====================================
-	@Transactional
-	(isolation = Isolation.READ_COMMITTED, rollbackFor = Exception.class)
+	@Transactional(isolation = Isolation.READ_COMMITTED, rollbackFor = Exception.class)
 	public TransferResponse immediateTransfer(TransferRequest request) {
 
 		// 1. 출금 계좌 조회
@@ -89,11 +89,11 @@ public class TransferService {
 	// =============================================
     // 예약이체 등록 (선차감 Hold)
     // =============================================
-	@Transactional
+	@Transactional(isolation = Isolation.READ_COMMITTED, rollbackFor = Exception.class)
 	public TransferResponse scheduleTransfer(TransferRequest request) {
 
-		//1. 출금 계좌 조회
-		AccountDto fromAccount = accountMapper.selectByAccountNo(request.getFromAccount());
+		//1. 출금 계좌 조회 (FOR UPDATE — 동시 예약이체 Lost Update 방지)
+		AccountDto fromAccount = accountMapper.selectByAccountNoForUpdate(request.getFromAccount());
 		if (fromAccount == null) {
 			return TransferResponse.builder()
 					.success(false)

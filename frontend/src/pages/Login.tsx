@@ -37,13 +37,21 @@ export default function Login() {
         return;
       }
 
-      // 2. 로그인한 회원의 계좌 정보를 자동으로 조회
-      //    (사용자가 계좌번호를 직접 입력하지 않아도 되도록)
+      // 2. 로그인한 회원이 보유한 모든 계좌 목록을 조회한다.
+      //    (한 회원이 여러 계좌를 가질 수 있으므로 배열로 받는다)
       const accountRes = await accountApi.getAccountByMember(memberId.trim());
-      const ownerName = accountRes.data.ownerName ?? memberId.trim();
-      const accountNo = accountRes.data.accountNo;
+      const accountList = Array.isArray(accountRes.data) ? accountRes.data : [accountRes.data];
 
-      login(memberId.trim(), accountNo, ownerName);
+      const accounts = accountList.map((a) => ({
+        accountNo: a.accountNo,
+        balance: a.balance ?? 0,
+        holdAmount: a.holdAmount ?? 0,
+        bankCode: a.bankCode ?? "999",
+      }));
+
+      const ownerName = memberId.trim();
+
+      login(memberId.trim(), accounts, ownerName);
       navigate("/home", { replace: true });
     } catch (err: unknown) {
       const e = err as { response?: { status?: number; data?: { message?: string } } };

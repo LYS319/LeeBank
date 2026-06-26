@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { accountApi } from "../api";
 import { useAuthStore } from "../stores/authStore";
-import type { Account, Transaction } from "../types/index.ts";
+import type { Transaction } from "../types/index.ts";
 
 function SendIcon() {
   return (
@@ -48,25 +48,50 @@ function SparkleIcon() {
   );
 }
 
+function PlusIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+      <path d="M12 5v14M5 12h14" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+// 계좌번호 끝 4자리만 보여주는 짧은 라벨 (탭에 다 표시하면 너무 길어서)
+function shortAccountLabel(accountNo: string) {
+  const last = accountNo.slice(-4);
+  return `통장 ${last}`;
+}
+
 export default function Dashboard() {
   const navigate = useNavigate();
-  const { accountNo, ownerName, logout } = useAuthStore();
+  const {
+    ownerName,
+    memberId,
+    accounts,
+    selectedAccountNo,
+    selectAccount,
+    addAccount,
+    logout,
+  } = useAuthStore();
 
-  const [account, setAccount] = useState<Account | null>(null);
+  const [balance, setBalance] = useState<number | null>(null);
   const [recent, setRecent] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isOpeningAccount, setIsOpeningAccount] = useState(false);
 
+  // 선택된 계좌가 바뀔 때마다 잔액/최근거래를 다시 조회한다.
   useEffect(() => {
     let mounted = true;
     async function load() {
-      if (!accountNo) return;
+      if (!selectedAccountNo) return;
+      setLoading(true);
       try {
         const [accRes, histRes] = await Promise.all([
-          accountApi.getAccount(accountNo),
-          accountApi.getHistory(accountNo, 3),
+          accountApi.getAccount(selectedAccountNo),
+          accountApi.getHistory(selectedAccountNo, 3),
         ]);
         if (!mounted) return;
-        setAccount(accRes.data);
+        setBalance(accRes.data?.balance ?? 0);
         const list = Array.isArray(histRes.data) ? histRes.data : histRes.data?.content ?? [];
         setRecent(list);
       } catch {
@@ -77,12 +102,33 @@ export default function Dashboard() {
     }
     load();
     return () => { mounted = false; };
-  }, [accountNo]);
+  }, [selectedAccountNo]);
 
   const handleLogout = () => {
     logout();
     navigate("/login", { replace: true });
   };
+
+  // 계좌 추가 개설 — 회원가입 때와 같은 로직(AuthService.createAccountFor)을 재사용한다.
+  const handleOpenAccount = async () => {
+    if (!memberId || isOpeningAccount) return;
+    setIsOpeningAccount(true);
+    try {
+      const res = await accountApi.openAccount(memberId);
+      addAccount({
+        accountNo: res.data.accountNo,
+        balance: 0,
+        holdAmount: 0,
+        bankCode: "999",
+      });
+    } catch {
+      // 계좌 개설 실패는 조용히 무시하고 그대로 둔다 (재시도 가능하도록 버튼은 그대로 둠)
+    } finally {
+      setIsOpeningAccount(false);
+    }
+  };
+
+  const hasMultipleAccounts = accounts.length > 1;
 
   return (
     <div className="dash">
@@ -94,13 +140,43 @@ export default function Dashboard() {
       </header>
 
       <div className="dash__body">
-        <div className="balance-hero" style={{ marginTop: 14 }}>
+        {/* 계좌가 2개 이상일 때만 전환 탭을 보여준다. 1개뿐이면 불필요한 UI라 숨긴다. */}
+        {hasMultipleAccounts && (
+          <div className="dash__account-tabs">
+            {accounts.map((acc) => (
+              <button
+                key={acc.accountNo}
+                className={`dash__account-tab${acc.accountNo === selectedAccountNo ? " active" : ""}`}
+                onClick={() => selectAccount(acc.accountNo)}
+              >
+                {shortAccountLabel(acc.accountNo)}
+              </button>
+            ))}
+            <button
+              className="dash__account-tab dash__account-tab--add"
+              onClick={handleOpenAccount}
+              disabled={isOpeningAccount}
+              aria-label="계좌 추가 개설"
+            >
+              <PlusIcon />
+            </button>
+          </div>
+        )}
+
+        <div className="balance-hero" style={{ marginTop: hasMultipleAccounts ? 8 : 14 }}>
           <p className="balance-hero__label">{ownerName ?? "내"} 계좌 잔액</p>
           <div className="balance-hero__amount num-display">
-            {loading ? "···" : `${(account?.balance ?? 0).toLocaleString("ko-KR")}원`}
+            {loading ? "···" : `${(balance ?? 0).toLocaleString("ko-KR")}원`}
           </div>
-          <p className="balance-hero__account">{account?.accountNo ?? accountNo}</p>
+          <p className="balance-hero__account">{selectedAccountNo}</p>
         </div>
+
+        {/* 계좌가 1개뿐일 때는 잔액 카드 아래에 작게 "계좌 추가 개설" 링크를 둔다. */}
+        {!hasMultipleAccounts && (
+          <button className="dash__add-account-link" onClick={handleOpenAccount} disabled={isOpeningAccount}>
+            <PlusIcon /> {isOpeningAccount ? "계좌 개설 중…" : "계좌 추가 개설"}
+          </button>
+        )}
 
         <div className="dash__quick-grid">
           <button className="dash__quick-item" onClick={() => navigate("/transfer")}>

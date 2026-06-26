@@ -16,6 +16,8 @@ public interface AccountMapper {
     // v2.1부터는 여러 계좌를 지원하므로 신규 코드에서는 selectAllByMemberId를 사용한다.
     // 다른 곳에서 이미 이 메서드를 참조 중일 수 있어 호환을 위해 남겨둔다.
     AccountDto selectByMemberId(@Param("memberId") String memberId);
+    
+    AccountDto selectByAccountNoForUpdate(@Param("accountNo") String accountNo);
 
     // 회원ID로 보유한 모든 계좌 목록 조회 (개설일 오래된 순)
     // 로그인 시 "이 회원이 가진 계좌들" 전체를 보여줄 때 사용한다.

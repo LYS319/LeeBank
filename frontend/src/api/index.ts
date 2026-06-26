@@ -24,6 +24,7 @@ apiClient.interceptors.response.use(
         // 거래 비밀번호 검증(confirm)에서 발생한 401은
         // 거래 인증 실패일 뿐, 로그인 세션 만료가 아니므로 자동 로그아웃 대상에서 제외한다.
         const isConfirmRequest = error.config?.url?.includes('/ai/chat/confirm');
+
         if (error.response?.status === 401 && !isConfirmRequest) {
             sessionStorage.removeItem('sessionId');
             window.location.href = '/login';
@@ -51,7 +52,7 @@ export const backendClient = axios.create({
 export const accountApi = {
     getAccount: (accountNo: string) => backendClient.get(`/api/account/${accountNo}`),
 
-    // 회원ID로 보유한 모든 계좌 목록 조회 (한 회원이 여러 계좌를 가질 수 있어 배열로 응답)
+    // 회원ID로 본인 계좌 조회 (로그인 시 계좌번호 입력 없이 자동 조회)
     getAccountByMember: (memberId: string) => backendClient.get(`/api/account/by-member/${memberId}`),
 
     getHistory: (accountNo: string, limit = 20) =>

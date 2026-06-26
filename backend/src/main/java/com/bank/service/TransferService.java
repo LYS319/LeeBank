@@ -26,10 +26,11 @@ public class TransferService {
 	// 즉시이체
 	// =====================================
 	@Transactional
+	(isolation = Isolation.READ_COMMITTED, rollbackFor = Exception.class)
 	public TransferResponse immediateTransfer(TransferRequest request) {
 
 		// 1. 출금 계좌 조회
-		AccountDto fromAccount = accountMapper.selectByAccountNo(request.getFromAccount());
+		AccountDto fromAccount = accountMapper.selectByAccountNoForUpdate(request.getFromAccount());
 		if (fromAccount == null) {
 			return TransferResponse.builder()
 					.success(false)

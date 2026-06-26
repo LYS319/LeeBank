@@ -19,6 +19,13 @@
         FROM ACCOUNT
         WHERE account_no = #{accountNo}
     </select>
+    
+    <select id="selectByAccountNoForUpdate" resultMap="accountResultMap">
+    SELECT account_no, member_id, bank_code, balance, hold_amount, account_status
+    FROM ACCOUNT
+    WHERE account_no = #{accountNo}
+    FOR UPDATE
+	</select>
 
     <!-- 잔액 차감 (balance - amount, 잔액 부족 시 업데이트 안 됨) -->
     <update id="deductBalance">

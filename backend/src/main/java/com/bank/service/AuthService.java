@@ -40,7 +40,6 @@ public class AuthService {
         }
 
         // 2. 비밀번호 검증
-        // 입력받은 비밀번호를 SHA-256 해시 후 DB 저장값과 비교
         String hashedInput = encryptionUtil.sha256(request.getPassword());
         if (!hashedInput.equals(member.getPassword())) {
             log.warn("비밀번호 불일치 — memberId: {}", request.getMemberId());
@@ -52,8 +51,6 @@ public class AuthService {
         }
 
         // 3. 인증 성공 — 세션 토큰 발급
-        // 실제 운영에서는 JWT를 사용하지만 현 프로젝트는
-        // 단순 SHA-256 토큰으로 세션 식별
         String authToken = encryptionUtil.sha256(request.getMemberId() + System.currentTimeMillis());
 
         log.info("인증 성공 — memberId: {}", request.getMemberId());
@@ -74,7 +71,7 @@ public class AuthService {
     }
 
     /**
-     * 회원가입 + 계좌개설
+     * 회원가입 + 계좌개설(첫 계좌)
      * 회원 INSERT와 계좌 INSERT를 하나의 트랜잭션으로 묶는다.
      * 둘 중 하나라도 실패하면 전체 롤백되어, "회원은 만들어졌는데 계좌가 없는" 상황을 방지한다.
      */
@@ -99,16 +96,8 @@ public class AuthService {
         member.setPhone(encryptionUtil.encrypt(request.getPhone()));
         memberMapper.insert(member);
 
-        // 3. 계좌번호 생성 — 999-100-XXXXXX (시퀀스값 6자리 패딩)
-        Long seq = accountMapper.nextAccountSeq();
-        String accountNo = LEEBANK_BANK_CODE + "-100-" + String.format("%06d", seq);
-
-        // 4. 계좌 INSERT — 잔액 0원으로 시작
-        AccountDto account = new AccountDto();
-        account.setAccountNo(accountNo);
-        account.setMemberId(request.getMemberId());
-        account.setBankCode(LEEBANK_BANK_CODE);
-        accountMapper.insert(account);
+        // 3. 계좌 생성 (회원가입 시 첫 계좌) — createAccountFor를 공통으로 재사용
+        String accountNo = createAccountFor(request.getMemberId());
 
         log.info("회원가입 + 계좌개설 완료 — memberId: {}, accountNo: {}", request.getMemberId(), accountNo);
 
@@ -118,5 +107,23 @@ public class AuthService {
                 .accountNo(accountNo)
                 .message("회원가입이 완료되었습니다.")
                 .build();
+    }
+
+    /**
+     * 계좌 생성 공통 로직 — 회원가입 시 첫 계좌, 추가 계좌개설 시 모두 이 메서드를 사용한다.
+     * 계좌번호는 999-100-XXXXXX 형식으로, 시퀀스(SEQ_ACCOUNT_NO)를 통해 중복 없이 채번된다.
+     * 호출하는 쪽(signup, AccountController.openAccount)이 트랜잭션을 가지고 있어야 한다.
+     */
+    public String createAccountFor(String memberId) {
+        Long seq = accountMapper.nextAccountSeq();
+        String accountNo = LEEBANK_BANK_CODE + "-100-" + String.format("%06d", seq);
+
+        AccountDto account = new AccountDto();
+        account.setAccountNo(accountNo);
+        account.setMemberId(memberId);
+        account.setBankCode(LEEBANK_BANK_CODE);
+        accountMapper.insert(account);
+
+        return accountNo;
     }
 }

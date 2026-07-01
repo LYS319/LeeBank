@@ -47,7 +47,7 @@ export default function Login() {
             const ownerName = accountData.ownerName ?? memberId.trim();
             const accountNo = accountData.accountNo;
 
-            login(memberId.trim(), accountNo, ownerName);
+            login(memberId.trim(), [{ accountNo, balance: 0, holdAmount: 0, bankCode: '999' }], ownerName);
             navigate('/home', { replace: true });
         } catch (err: unknown) {
             const e = err as { response?: { status?: number; data?: { message?: string } } };
@@ -94,7 +94,7 @@ export default function Login() {
             const accountData = Array.isArray(accountRes.data) ? accountRes.data[0] : accountRes.data;
             const ownerName = accountData.ownerName ?? memberId.trim();
             const accountNo = accountData.accountNo;
-            login(memberId.trim(), accountNo, ownerName);
+            ogin(memberId.trim(), [{ accountNo, balance: 0, holdAmount: 0, bankCode: '999' }], ownerName);
             navigate('/home', { replace: true });
         } catch {
             setError('계좌 정보를 불러오는 데 실패했어요.');

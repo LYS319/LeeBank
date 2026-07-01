@@ -3,14 +3,16 @@ package com.bank.service;
 import com.bank.dto.CredentialDto;
 import com.bank.mapper.CredentialMapper;
 import com.webauthn4j.WebAuthnManager;
-import com.webauthn4j.credential.CoreCredentialRecord;
+import com.webauthn4j.authenticator.Authenticator;
+import com.webauthn4j.authenticator.AuthenticatorImpl;
+import com.webauthn4j.converter.AttestedCredentialDataConverter;
+import com.webauthn4j.converter.util.ObjectConverter;
 import com.webauthn4j.data.*;
-import com.webauthn4j.data.attestation.authenticator.COSEKey;
+import com.webauthn4j.data.attestation.authenticator.AttestedCredentialData;
 import com.webauthn4j.data.client.Origin;
-import com.webauthn4j.data.client.challenge.Challenge;
 import com.webauthn4j.data.client.challenge.DefaultChallenge;
 import com.webauthn4j.server.ServerProperty;
-import com.webauthn4j.verifier.exception.VerificationException;
+import com.webauthn4j.validator.exception.ValidationException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -26,6 +28,9 @@ public class WebAuthnService {
 
     private final CredentialMapper credentialMapper;
     private final WebAuthnManager webAuthnManager = WebAuthnManager.createNonStrictWebAuthnManager();
+    private final ObjectConverter objectConverter = new ObjectConverter();
+    private final AttestedCredentialDataConverter credentialDataConverter =
+            new AttestedCredentialDataConverter(objectConverter);
 
     @Value("${webauthn.rp-id:leebank.duckdns.org}")
     private String rpId;
@@ -33,7 +38,7 @@ public class WebAuthnService {
     @Value("${webauthn.origin:https://leebank.duckdns.org}")
     private String origin;
 
-    // 챌린지 임시 저장 (운영환경에서는 Redis 사용, 여기서는 메모리)
+    // 챌린지 임시 저장 (운영환경에서는 Redis 사용)
     private final Map<String, byte[]> challengeStore = new ConcurrentHashMap<>();
 
     // ────────────────────────────────────────
@@ -74,32 +79,34 @@ public class WebAuthnService {
                     null
             );
 
-            RegistrationParameters registrationParameters = new RegistrationParameters(serverProperty, null, false, true);
-            RegistrationData registrationData = webAuthnManager.parse(registrationRequest);
-            webAuthnManager.verify(registrationData, registrationParameters);
+            RegistrationParameters registrationParameters = new RegistrationParameters(
+                    serverProperty, null, false, true
+            );
 
-            // 공개키 저장
-            COSEKey coseKey = registrationData.getAttestationObject()
+            RegistrationData registrationData = webAuthnManager.validate(registrationRequest, registrationParameters);
+
+            AttestedCredentialData attestedCredentialData = registrationData
+                    .getAttestationObject()
                     .getAuthenticatorData()
-                    .getAttestedCredentialData()
-                    .getCOSEKey();
+                    .getAttestedCredentialData();
+
+            long signCount = registrationData.getAttestationObject().getAuthenticatorData().getSignCount();
+
+            // AttestedCredentialData만 직렬화하여 저장 (COSEKey + AAGUID + credentialId 포함)
+            byte[] serialized = credentialDataConverter.convert(attestedCredentialData);
 
             CredentialDto credential = new CredentialDto();
             credential.setCredentialId(credentialId);
             credential.setMemberId(memberId);
-            credential.setPublicKeyCose(coseKey.getBytes());  // COSE 인코딩된 공개키
-            credential.setSignCount(registrationData.getAttestationObject()
-                    .getAuthenticatorData().getSignCount());
-            credential.setAaguid(registrationData.getAttestationObject()
-                    .getAuthenticatorData().getAttestedCredentialData()
-                    .getAaguid().toString());
+            credential.setPublicKeyCose(serialized);
+            credential.setSignCount(signCount);
+            credential.setAaguid(attestedCredentialData.getAaguid().toString());
 
             credentialMapper.insert(credential);
-
             log.info("WebAuthn 등록 완료 — memberId: {}", memberId);
             return Map.of("success", true, "message", "생체인증 등록이 완료되었습니다.");
 
-        } catch (VerificationException e) {
+        } catch (ValidationException e) {
             log.error("WebAuthn 등록 검증 실패 — memberId: {}, error: {}", memberId, e.getMessage());
             throw new IllegalArgumentException("생체인증 등록 검증에 실패했습니다.");
         }
@@ -127,16 +134,23 @@ public class WebAuthnService {
         }
 
         try {
-            String credentialId    = body.get("credentialId");
+            String credentialId      = body.get("credentialId");
             byte[] authenticatorData = Base64.getUrlDecoder().decode(body.get("authenticatorData"));
             byte[] clientDataJSON    = Base64.getUrlDecoder().decode(body.get("clientDataJSON"));
             byte[] signature         = Base64.getUrlDecoder().decode(body.get("signature"));
 
-            // DB에서 공개키 조회
+            // DB에서 AttestedCredentialData 복원
             CredentialDto stored = credentialMapper.selectByCredentialId(credentialId);
             if (stored == null) {
                 throw new IllegalArgumentException("등록되지 않은 인증기입니다.");
             }
+            AttestedCredentialData attestedCredentialData =
+                    credentialDataConverter.convert(stored.getPublicKeyCose());
+
+            // Authenticator 재조립 (attestationStatement는 검증에 불필요하므로 null)
+            Authenticator authenticator = new AuthenticatorImpl(
+                    attestedCredentialData, null, stored.getSignCount()
+            );
 
             AuthenticationRequest authenticationRequest = new AuthenticationRequest(
                     Base64.getUrlDecoder().decode(credentialId),
@@ -152,21 +166,11 @@ public class WebAuthnService {
                     null
             );
 
-            CoreCredentialRecord credentialRecord = new com.webauthn4j.credential.CredentialRecord(
-                    stored.getPublicKeyCose(),
-                    stored.getSignCount(),
-                    true,
-                    true,
-                    null,
-                    null
-            );
-
             AuthenticationParameters authenticationParameters = new AuthenticationParameters(
-                    serverProperty, credentialRecord, null, false, true
+                    serverProperty, authenticator, false, true
             );
 
-            AuthenticationData authenticationData = webAuthnManager.parse(authenticationRequest);
-            webAuthnManager.verify(authenticationData, authenticationParameters);
+            AuthenticationData authenticationData = webAuthnManager.validate(authenticationRequest, authenticationParameters);
 
             // sign count 업데이트
             stored.setSignCount(authenticationData.getAuthenticatorData().getSignCount());
@@ -175,8 +179,8 @@ public class WebAuthnService {
             log.info("WebAuthn 인증 성공 — memberId: {}", memberId);
             return Map.of("success", true, "memberId", memberId, "message", "생체인증 성공");
 
-        } catch (VerificationException e) {
-            log.error("WebAuthn 인증 실패 — memberId: {}, error: {}", memberId, e.getMessage());
+        } catch (ValidationException e) {
+            log.error("WebAuthn 인증 검증 실패 — memberId: {}, error: {}", memberId, e.getMessage());
             throw new IllegalArgumentException("생체인증 검증에 실패했습니다.");
         }
     }

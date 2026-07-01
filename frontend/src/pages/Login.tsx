@@ -2,11 +2,13 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { authApi, accountApi } from "../api";
 import { useAuthStore } from "../stores/authStore";
+import { useWebAuthn } from "../hooks/useWebAuthn";
 import PageHeader from "../components/layout/PageHeader";
 
 export default function Login() {
   const navigate = useNavigate();
   const login = useAuthStore((s) => s.login);
+  const { register, authenticate, loading: webAuthnLoading, error: webAuthnError, setError: setWebAuthnError } = useWebAuthn();
 
   const [memberId, setMemberId] = useState("");
   const [password, setPassword] = useState("");
@@ -15,8 +17,6 @@ export default function Login() {
 
   const canSubmit = memberId.trim() && password.trim();
 
-  // 거래 비밀번호는 회원가입 때와 동일하게 숫자 6자리로 통일한다.
-  // (이체 시 사용하는 핀패드 입력 형식과 일치시켜야 한다)
   const handlePasswordChange = (value: string) => {
     const digitsOnly = value.replace(/\D/g, "").slice(0, 6);
     setPassword(digitsOnly);
@@ -30,28 +30,17 @@ export default function Login() {
     setError("");
 
     try {
-      // 1. 회원ID + 비밀번호 검증 (Spring이 SHA-256 해시 후 DB 비교)
       const verifyRes = await authApi.verify(memberId.trim(), password);
       if (!verifyRes.data.success) {
         setError(verifyRes.data.message || "로그인에 실패했어요.");
         return;
       }
 
-      // 2. 로그인한 회원이 보유한 모든 계좌 목록을 조회한다.
-      //    (한 회원이 여러 계좌를 가질 수 있으므로 배열로 받는다)
       const accountRes = await accountApi.getAccountByMember(memberId.trim());
-      const accountList = Array.isArray(accountRes.data) ? accountRes.data : [accountRes.data];
+      const ownerName = accountRes.data.ownerName ?? memberId.trim();
+      const accountNo = accountRes.data.accountNo;
 
-      const accounts = accountList.map((a) => ({
-        accountNo: a.accountNo,
-        balance: a.balance ?? 0,
-        holdAmount: a.holdAmount ?? 0,
-        bankCode: a.bankCode ?? "999",
-      }));
-
-      const ownerName = memberId.trim();
-
-      login(memberId.trim(), accounts, ownerName);
+      login(memberId.trim(), accountNo, ownerName);
       navigate("/home", { replace: true });
     } catch (err: unknown) {
       const e = err as { response?: { status?: number; data?: { message?: string } } };
@@ -66,6 +55,45 @@ export default function Login() {
       setIsLoading(false);
     }
   };
+
+  // ── 생체인증 등록 ──────────────────────────────
+  const handleWebAuthnRegister = async () => {
+    if (!memberId.trim()) {
+      setError("먼저 회원 ID를 입력해주세요.");
+      return;
+    }
+    setWebAuthnError("");
+    const ok = await register(memberId.trim());
+    if (ok) {
+      setError("");
+      alert("생체인증 등록이 완료되었어요! 다음부터 지문/Face ID로 로그인하세요.");
+    }
+  };
+
+  // ── 생체인증 로그인 ──────────────────────────────
+  const handleWebAuthnLogin = async () => {
+    if (!memberId.trim()) {
+      setError("먼저 회원 ID를 입력해주세요.");
+      return;
+    }
+    setError("");
+    setWebAuthnError("");
+
+    const ok = await authenticate(memberId.trim());
+    if (!ok) return;
+
+    try {
+      const accountRes = await accountApi.getAccountByMember(memberId.trim());
+      const ownerName = accountRes.data.ownerName ?? memberId.trim();
+      const accountNo = accountRes.data.accountNo;
+      login(memberId.trim(), accountNo, ownerName);
+      navigate("/home", { replace: true });
+    } catch {
+      setError("계좌 정보를 불러오는 데 실패했어요.");
+    }
+  };
+
+  const combinedError = error || webAuthnError;
 
   return (
     <div className="login">
@@ -105,12 +133,37 @@ export default function Login() {
           />
         </div>
 
-        {error && <p className="auth-sheet__error" style={{ margin: 0 }}>{error}</p>}
+        {combinedError && (
+          <p className="auth-sheet__error" style={{ margin: 0 }}>{combinedError}</p>
+        )}
 
         <button className="login__submit" type="submit" disabled={!canSubmit || isLoading}>
           {isLoading ? "확인하는 중…" : "로그인"}
         </button>
       </form>
+
+      {/* 생체인증 영역 */}
+      <div className="login__biometric">
+        <p className="login__biometric-label">생체인증</p>
+        <div className="login__biometric-buttons">
+          <button
+            className="login__biometric-btn"
+            type="button"
+            onClick={handleWebAuthnLogin}
+            disabled={webAuthnLoading || !memberId.trim()}
+          >
+            {webAuthnLoading ? "인증 중…" : "🔐 지문/Face ID 로그인"}
+          </button>
+          <button
+            className="login__biometric-btn login__biometric-btn--secondary"
+            type="button"
+            onClick={handleWebAuthnRegister}
+            disabled={webAuthnLoading || !memberId.trim()}
+          >
+            생체인증 등록
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

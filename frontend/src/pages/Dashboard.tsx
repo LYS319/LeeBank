@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { accountApi } from "../api";
 import { useAuthStore } from "../stores/authStore";
 import type { Transaction } from "../types/index.ts";
+import { useWebAuthn } from '../hooks/useWebAuthn';
 
 function SendIcon() {
   return (
@@ -78,6 +79,13 @@ export default function Dashboard() {
   const [recent, setRecent] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
   const [isOpeningAccount, setIsOpeningAccount] = useState(false);
+  const { register, loading: webAuthnLoading } = useWebAuthn();
+
+  const handleWebAuthnRegister = async () => {
+      if (!memberId) return;
+      const ok = await register(memberId);
+      if (ok) alert('생체인증 등록 완료! 다음 로그인부터 지문/Face ID를 사용할 수 있어요.');
+  };
 
   // 선택된 계좌가 바뀔 때마다 잔액/최근거래를 다시 조회한다.
   useEffect(() => {
@@ -133,11 +141,21 @@ export default function Dashboard() {
   return (
     <div className="dash">
       <header className="dash__header">
-        <p className="dash__greeting">
-          <span>{ownerName ?? "고객"}</span>님, 안녕하세요
-        </p>
+    <p className="dash__greeting">
+        <span>{ownerName ?? '고객'}</span>님, 안녕하세요
+    </p>
+    <div style={{ display: 'flex', gap: '8px' }}>
+        <button 
+            className="dash__logout" 
+            onClick={handleWebAuthnRegister}
+            disabled={webAuthnLoading}
+            style={{ color: '#3654FF', borderColor: '#3654FF' }}
+        >
+            {webAuthnLoading ? '등록 중…' : '🔐 생체인증 등록'}
+        </button>
         <button className="dash__logout" onClick={handleLogout}>로그아웃</button>
-      </header>
+    </div>
+</header>
 
       <div className="dash__body">
         {/* 계좌가 2개 이상일 때만 전환 탭을 보여준다. 1개뿐이면 불필요한 UI라 숨긴다. */}

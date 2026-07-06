@@ -19,7 +19,9 @@
         <id     property="transactionId" column="transaction_id"/>
         <result property="txType"        column="tx_type"/>
         <result property="fromAccount"   column="from_account"/>
+        <result property="fromOwnerName" column="from_owner_name"/>
         <result property="toAccount"     column="to_account"/>
+        <result property="toOwnerName"   column="to_owner_name"/>
         <result property="amount"        column="amount"/>
         <result property="memo"          column="memo"/>
         <result property="balanceAfter"  column="balance_after"/>
@@ -53,7 +55,9 @@
                 SELECT t.transfer_id AS transaction_id,
                        'TRANSFER' AS tx_type,
                        t.from_account,
+                       fm.name AS from_owner_name,
                        t.to_account,
+                       tm.name AS to_owner_name,
                        t.amount,
                        t.memo,
                        w.balance_after,
@@ -63,13 +67,19 @@
                        t.status
                 FROM TRANSFER t
                 LEFT JOIN WITHDRAWAL_LEDGER w ON t.withdrawal_id = w.withdrawal_id
+                LEFT JOIN ACCOUNT fa ON t.from_account = fa.account_no
+                LEFT JOIN MEMBER fm ON fa.member_id = fm.member_id
+                LEFT JOIN ACCOUNT ta ON t.to_account = ta.account_no
+                LEFT JOIN MEMBER tm ON ta.member_id = tm.member_id
 
                 UNION ALL
 
                 SELECT d.deposit_id AS transaction_id,
                        'ADMIN_DEPOSIT' AS tx_type,
                        NULL AS from_account,
+                       'BANK' AS from_owner_name,
                        d.account_no AS to_account,
+                       dm.name AS to_owner_name,
                        d.amount,
                        d.memo,
                        d.balance_after,
@@ -78,6 +88,8 @@
                        d.deposit_type AS transfer_type,
                        'COMPLETED' AS status
                 FROM DEPOSIT_LEDGER d
+                LEFT JOIN ACCOUNT da ON d.account_no = da.account_no
+                LEFT JOIN MEMBER dm ON da.member_id = dm.member_id
                 WHERE d.deposit_type = 'DEPOSIT'
                   AND d.transfer_id IS NULL
             ) q

@@ -57,10 +57,9 @@ function PlusIcon() {
   );
 }
 
-// 계좌번호 끝 4자리만 보여주는 짧은 라벨 (탭에 다 표시하면 너무 길어서)
 function shortAccountLabel(accountNo: string) {
   const last = accountNo.slice(-4);
-  return `통장 ${last}`;
+  return '통장 ' + last;
 }
 
 export default function Dashboard() {
@@ -82,12 +81,11 @@ export default function Dashboard() {
   const { register, loading: webAuthnLoading } = useWebAuthn();
 
   const handleWebAuthnRegister = async () => {
-      if (!memberId) return;
-      const ok = await register(memberId);
-      if (ok) alert('생체인증 등록 완료! 다음 로그인부터 지문/Face ID를 사용할 수 있어요.');
+    if (!memberId) return;
+    const ok = await register(memberId);
+    if (ok) alert('생체인증 등록 완료! 다음 로그인부터 지문/Face ID를 사용할 수 있어요.');
   };
 
-  // 선택된 계좌가 바뀔 때마다 잔액/최근거래를 다시 조회한다.
   useEffect(() => {
     let mounted = true;
     async function load() {
@@ -103,7 +101,7 @@ export default function Dashboard() {
         const list = Array.isArray(histRes.data) ? histRes.data : histRes.data?.content ?? [];
         setRecent(list);
       } catch {
-        // 대시보드는 조회 실패해도 화면은 유지하고 조용히 넘어간다
+        // 대시보드는 조회 실패해도 화면은 유지
       } finally {
         if (mounted) setLoading(false);
       }
@@ -117,7 +115,6 @@ export default function Dashboard() {
     navigate("/login", { replace: true });
   };
 
-  // 계좌 추가 개설 — 회원가입 때와 같은 로직(AuthService.createAccountFor)을 재사용한다.
   const handleOpenAccount = async () => {
     if (!memberId || isOpeningAccount) return;
     setIsOpeningAccount(true);
@@ -130,7 +127,7 @@ export default function Dashboard() {
         bankCode: "999",
       });
     } catch {
-      // 계좌 개설 실패는 조용히 무시하고 그대로 둔다 (재시도 가능하도록 버튼은 그대로 둠)
+      // 계좌 개설 실패 무시
     } finally {
       setIsOpeningAccount(false);
     }
@@ -141,30 +138,29 @@ export default function Dashboard() {
   return (
     <div className="dash">
       <header className="dash__header">
-    <p className="dash__greeting">
-        <span>{ownerName ?? '고객'}</span>님, 안녕하세요
-    </p>
-    <div style={{ display: 'flex', gap: '8px' }}>
-        <button 
-            className="dash__logout" 
+        <p className="dash__greeting">
+          <span>{ownerName ?? '고객'}</span>님, 안녕하세요
+        </p>
+        <div style={{ display: 'flex', gap: '8px' }}>
+          <button
+            className="dash__logout"
             onClick={handleWebAuthnRegister}
             disabled={webAuthnLoading}
             style={{ color: '#3654FF', borderColor: '#3654FF' }}
-        >
-            {webAuthnLoading ? '등록 중…' : '🔐 생체인증 등록'}
-        </button>
-        <button className="dash__logout" onClick={handleLogout}>로그아웃</button>
-    </div>
-</header>
+          >
+            {webAuthnLoading ? '등록 중...' : '생체인증 등록'}
+          </button>
+          <button className="dash__logout" onClick={handleLogout}>로그아웃</button>
+        </div>
+      </header>
 
       <div className="dash__body">
-        {/* 계좌가 2개 이상일 때만 전환 탭을 보여준다. 1개뿐이면 불필요한 UI라 숨긴다. */}
         {hasMultipleAccounts && (
           <div className="dash__account-tabs">
             {accounts.map((acc) => (
               <button
                 key={acc.accountNo}
-                className={`dash__account-tab${acc.accountNo === selectedAccountNo ? " active" : ""}`}
+                className={'dash__account-tab' + (acc.accountNo === selectedAccountNo ? ' active' : '')}
                 onClick={() => selectAccount(acc.accountNo)}
               >
                 {shortAccountLabel(acc.accountNo)}
@@ -182,17 +178,16 @@ export default function Dashboard() {
         )}
 
         <div className="balance-hero" style={{ marginTop: hasMultipleAccounts ? 8 : 14 }}>
-          <p className="balance-hero__label">{ownerName ?? "내"} 계좌 잔액</p>
+          <p className="balance-hero__label">{ownerName ?? '내'} 계좌 잔액</p>
           <div className="balance-hero__amount num-display">
-            {loading ? "···" : `${(balance ?? 0).toLocaleString("ko-KR")}원`}
+            {loading ? '...' : (balance ?? 0).toLocaleString('ko-KR') + '원'}
           </div>
           <p className="balance-hero__account">{selectedAccountNo}</p>
         </div>
 
-        {/* 계좌가 1개뿐일 때는 잔액 카드 아래에 작게 "계좌 추가 개설" 링크를 둔다. */}
         {!hasMultipleAccounts && (
           <button className="dash__add-account-link" onClick={handleOpenAccount} disabled={isOpeningAccount}>
-            <PlusIcon /> {isOpeningAccount ? "계좌 개설 중…" : "계좌 추가 개설"}
+            <PlusIcon /> {isOpeningAccount ? '계좌 개설 중...' : '계좌 추가 개설'}
           </button>
         )}
 
@@ -215,11 +210,19 @@ export default function Dashboard() {
           </button>
         </div>
 
-        <div className="dash__ai-banner" onClick={() => navigate("/chat")}>
+        <div className="dash__ai-banner" onClick={() => navigate('/chat')}>
           <span className="dash__ai-banner-icon"><SparkleIcon /></span>
           <div>
             <p className="dash__ai-banner-title">AI한테 말로 시켜보세요</p>
-            <p className="dash__ai-banner-desc">"5만원 보내줘" 한마디면 충분해요</p>
+            <p className="dash__ai-banner-desc">말 한마디면 충분해요</p>
+          </div>
+        </div>
+
+        <div className="dash__ai-banner" onClick={() => navigate('/analyze')} style={{ marginTop: 8 }}>
+          <span className="dash__ai-banner-icon">📊</span>
+          <div>
+            <p className="dash__ai-banner-title">이번 달 소비 패턴 분석</p>
+            <p className="dash__ai-banner-desc">AI가 지출을 카테고리별로 분석해 드려요</p>
           </div>
         </div>
 
@@ -237,18 +240,18 @@ export default function Dashboard() {
         ) : (
           <div className="history-list">
             {recent.map((t) => {
-              const isOut = t.type === "TRANSFER_OUT";
+              const isOut = (t.txType ?? t.type) === 'TRANSFER_OUT';
               return (
                 <div className="history-item" key={t.transactionId}>
-                  <span className={`history-item__icon history-item__icon--${isOut ? "out" : "in"}`}>
-                    {isOut ? "↑" : "↓"}
+                  <span className={'history-item__icon history-item__icon--' + (isOut ? 'out' : 'in')}>
+                    {isOut ? '↑' : '↓'}
                   </span>
                   <div className="history-item__main">
-                    <p className="history-item__name">{t.counterpartName || t.memo || "거래"}</p>
+                    <p className="history-item__name">{t.counterpartName || t.memo || '거래'}</p>
                   </div>
                   <div className="history-item__amount-block">
-                    <div className={`history-item__amount num-display history-item__amount--${isOut ? "out" : "in"}`}>
-                      {isOut ? "-" : "+"}{t.amount.toLocaleString("ko-KR")}원
+                    <div className={'history-item__amount num-display history-item__amount--' + (isOut ? 'out' : 'in')}>
+                      {isOut ? '-' : '+'}{t.amount.toLocaleString('ko-KR')}원
                     </div>
                   </div>
                 </div>

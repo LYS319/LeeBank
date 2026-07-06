@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { accountApi } from '../api';
-import { authApi } from '../api';
+import { authApi, accountApi } from '../api';
 import { useAuthStore } from '../stores/authStore';
 import { useWebAuthn } from '../hooks/useWebAuthn';
 import PageHeader from '../components/layout/PageHeader';
@@ -9,6 +8,7 @@ import PageHeader from '../components/layout/PageHeader';
 export default function Login() {
     const navigate = useNavigate();
     const login = useAuthStore((s) => s.login);
+    const setPassword = useAuthStore((s) => s.setPassword);
     const {
         authenticate,
         loading: webAuthnLoading,
@@ -17,7 +17,7 @@ export default function Login() {
     } = useWebAuthn();
 
     const [memberId, setMemberId] = useState('');
-    const [password, setPassword] = useState('');
+    const [password, setPasswordState] = useState('');
     const [error, setError] = useState('');
     const [isLoading, setIsLoading] = useState(false);
 
@@ -25,7 +25,7 @@ export default function Login() {
 
     const handlePasswordChange = (value: string) => {
         const digitsOnly = value.replace(/\D/g, '').slice(0, 6);
-        setPassword(digitsOnly);
+        setPasswordState(digitsOnly);
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -46,6 +46,9 @@ export default function Login() {
             const accountData = Array.isArray(accountRes.data) ? accountRes.data[0] : accountRes.data;
             const ownerName = accountData.ownerName ?? memberId.trim();
             const accountNo = accountData.accountNo;
+
+            // 생체인증 이체용으로 비밀번호를 메모리에 저장
+            setPassword(password);
 
             login(memberId.trim(), [{
                 accountNo,
@@ -68,12 +71,10 @@ export default function Login() {
         }
     };
 
-    // ── 생체인증 로그인 — ID 입력 없이 동작 ──────────
     const handleWebAuthnLogin = async () => {
         setError('');
         setWebAuthnError('');
 
-        // memberId 옵셔널 — 없으면 서버가 credentialId로 역조회
         const result = await authenticate(memberId.trim() || undefined);
         if (!result.success || !result.memberId) return;
 
@@ -143,11 +144,10 @@ export default function Login() {
                 )}
 
                 <button className="login__submit" type="submit" disabled={!canSubmit || isLoading}>
-                    {isLoading ? '확인하는 중…' : '로그인'}
+                    {isLoading ? '확인하는 중...' : '로그인'}
                 </button>
             </form>
 
-            {/* 생체인증 로그인 — ID 입력 없이 바로 가능 */}
             <div className="login__biometric">
                 <p className="login__biometric-label">등록된 생체인증으로 로그인</p>
                 <button
@@ -156,7 +156,7 @@ export default function Login() {
                     onClick={handleWebAuthnLogin}
                     disabled={webAuthnLoading}
                 >
-                    {webAuthnLoading ? '인증 중…' : '🔐 지문/Face ID 로그인'}
+                    {webAuthnLoading ? '인증 중...' : '지문/Face ID 로그인'}
                 </button>
             </div>
         </div>

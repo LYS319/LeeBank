@@ -185,7 +185,7 @@ export default function History() {
               ) : (
                 <div className="history-list">
                   {transactions.map((t) => {
-                    const isOut = t.type === "TRANSFER_OUT";
+                    const isOut = (t.txType ?? t.type) === 'TRANSFER_OUT';
                     return (
                       <div className="history-item" key={t.transactionId}>
                         <span className={`history-item__icon history-item__icon--${isOut ? "out" : "in"}`}>

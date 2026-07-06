@@ -60,3 +60,23 @@ export interface ResultCardData {
     amount?: number;
     rows: { label: string; value: string }[];
 }
+
+export interface Transaction {
+    transactionId: string;
+    type?: 'TRANSFER_IN' | 'TRANSFER_OUT';   // 호환용
+    txType?: 'TRANSFER_IN' | 'TRANSFER_OUT'; // API 실제 응답 필드
+    amount: number;
+    counterpartAccount?: string;
+    counterpartName?: string;
+    fromAccount?: string;
+    toAccount?: string;
+    memo: string;
+    balanceAfter: number;
+    createdAt: string;
+}
+
+export interface PendingAction {
+    tool: 'immediate_transfer' | 'schedule_transfer' | 'get_balance' | 'get_history';
+    params: Record<string, unknown>;
+    autoConfirm?: boolean;  // 조회 도구 자동 확인용
+}

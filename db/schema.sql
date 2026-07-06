@@ -153,7 +153,20 @@ SELECT
     d.balance_after,
     d.created_at
 FROM DEPOSIT_LEDGER d
-JOIN TRANSFER t ON d.transfer_id = t.transfer_id;
+JOIN TRANSFER t ON d.transfer_id = t.transfer_id
+UNION ALL
+SELECT
+    d.deposit_id                            AS transaction_id,
+    NULL                                    AS from_account,
+    d.account_no                            AS to_account,
+    d.amount,
+    'ADMIN_DEPOSIT'                         AS tx_type,
+    d.memo,
+    d.balance_after,
+    d.created_at
+FROM DEPOSIT_LEDGER d
+WHERE d.deposit_type = 'DEPOSIT'
+  AND d.transfer_id IS NULL;
 
 -- 시퀀스 추가
 CREATE SEQUENCE SEQ_WITHDRAWAL  START WITH 1 INCREMENT BY 1;
@@ -165,3 +178,25 @@ CREATE INDEX idx_withdrawal_account ON WITHDRAWAL_LEDGER(account_no, created_at)
 CREATE INDEX idx_deposit_account    ON DEPOSIT_LEDGER(account_no, created_at);
 CREATE INDEX idx_transfer_from      ON TRANSFER(from_account, created_at);
 CREATE INDEX idx_transfer_to        ON TRANSFER(to_account, created_at);
+
+-- ================================================================
+-- v2.1 Master admin
+-- 관리자 페이지 로그인 계정. password는 백엔드 EncryptionUtil.sha256과 같은 SHA-256 hex 문자열.
+-- DBeaver에서 초기 계정을 넣을 때는 아래 INSERT 예시처럼 LOWER(STANDARD_HASH(...))를 사용한다.
+-- ================================================================
+
+CREATE TABLE MASTER_ADMIN (
+    admin_id       VARCHAR2(30)   NOT NULL,
+    password       VARCHAR2(64)   NOT NULL,
+    admin_name     VARCHAR2(100)  NOT NULL,
+    admin_status   VARCHAR2(10)   DEFAULT 'ACTIVE',
+    created_at     TIMESTAMP      DEFAULT SYSDATE,
+    last_login_at  TIMESTAMP,
+    CONSTRAINT pk_master_admin PRIMARY KEY (admin_id),
+    CONSTRAINT chk_master_admin_status CHECK (admin_status IN ('ACTIVE', 'LOCKED'))
+);
+
+-- 초기 관리자 계정 예시: ID master / PW 123456
+-- 운영/시연 전에 비밀번호는 반드시 바꿔서 실행한다.
+-- INSERT INTO MASTER_ADMIN (admin_id, password, admin_name)
+-- VALUES ('master', LOWER(STANDARD_HASH('123456', 'SHA256')), 'Master Admin');

@@ -79,7 +79,7 @@
             deposit_type, transfer_id, memo, created_at
         ) VALUES (
             #{depositId}, #{accountNo}, #{amount}, #{balanceAfter},
-            #{depositType}, #{transferId}, #{memo}, SYSTIMESTAMP
+            #{depositType}, #{transferId, jdbcType=VARCHAR}, #{memo}, SYSTIMESTAMP
         )
     </insert>
 

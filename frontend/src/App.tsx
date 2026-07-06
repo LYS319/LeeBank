@@ -9,9 +9,10 @@ import History from "./pages/History";
 import BottomNav from "./components/layout/BottomNav";
 import RequireAuth from "./components/layout/RequireAuth";
 import Analyze from './pages/Analyze';
+import Master from "./pages/Master";
 
 // 로그인 전 화면 (네비게이션 바를 보여주지 않는다)
-const AUTH_PATHS = ["/", "/login", "/signup"];
+const AUTH_PATHS = ["/", "/login", "/signup", "/master"];
 
 // 모바일: 모든 페이지가 항상 480px 앱 프레임처럼 보인다 (app-shell이 미디어쿼리로 처리).
 // 데스크탑: 모든 페이지가 전체 너비를 쓰는 일반 웹사이트처럼 보인다.
@@ -73,6 +74,7 @@ function Shell() {
 
           <Route path="*" element={<Navigate to="/" replace />} />
           <Route path="/analyze" element={<Analyze />} />
+          <Route path="/master" element={<Master />} />
         </Routes>
       </div>
       {!hideNav && <BottomNav />}

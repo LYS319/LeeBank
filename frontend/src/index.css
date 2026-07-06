@@ -2304,6 +2304,32 @@ input {
   font-size: 14px;
 }
 
+.master__search {
+  margin-bottom: 12px;
+}
+
+.master__search label {
+  display: grid;
+  gap: 7px;
+  color: var(--ink-soft);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.master__search input {
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px;
+  font-size: 14px;
+  color: var(--ink);
+  outline: none;
+}
+
+.master__search input:focus {
+  border-color: var(--primary);
+}
+
 .master__message {
   margin-top: 12px;
   color: var(--primary);
@@ -2401,12 +2427,20 @@ input {
 
 .master__tx {
   display: grid;
-  grid-template-columns: 1.1fr 1fr 0.8fr 1fr;
+  grid-template-columns: 0.9fr minmax(280px, 1.4fr) 0.75fr 0.8fr;
   gap: 14px;
-  align-items: center;
+  align-items: start;
   border: 1px solid var(--border);
   border-radius: 8px;
   padding: 12px;
+}
+
+.master__field-label {
+  display: block;
+  margin-bottom: 3px;
+  color: var(--ink-faint);
+  font-size: 11px;
+  font-weight: 800;
 }
 
 .master__tx-id {
@@ -2425,10 +2459,16 @@ input {
 
 .master__tx-accounts {
   display: grid;
-  gap: 4px;
+  gap: 8px;
   color: var(--ink-soft);
   font-size: 13px;
   word-break: break-all;
+}
+
+.master__tx-accounts strong {
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 700;
 }
 
 .master__tx-amount {
@@ -2440,6 +2480,11 @@ input {
 .master__tx-memo {
   justify-self: end;
   text-align: right;
+}
+
+.master__tx-memo p {
+  margin: 0;
+  color: var(--ink-soft);
 }
 
 @media (max-width: 768px) {

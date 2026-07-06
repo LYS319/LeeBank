@@ -18,7 +18,9 @@ interface MasterTransaction {
   transactionId: string;
   txType: "TRANSFER" | "ADMIN_DEPOSIT" | string;
   fromAccount?: string | null;
+  fromOwnerName?: string | null;
   toAccount?: string | null;
+  toOwnerName?: string | null;
   amount: number;
   memo?: string | null;
   balanceAfter?: number | null;
@@ -44,6 +46,18 @@ function formatDate(value?: string) {
   });
 }
 
+function transactionTypeLabel(type: string) {
+  if (type === "TRANSFER") return "계좌 이체";
+  if (type === "ADMIN_DEPOSIT") return "관리자 입금";
+  return type;
+}
+
+function accountLabel(ownerName?: string | null, accountNo?: string | null, fallback = "-") {
+  if (!accountNo && !ownerName) return fallback;
+  if (!accountNo) return ownerName || fallback;
+  return ownerName ? `${ownerName} (${accountNo})` : accountNo;
+}
+
 export default function Master() {
   const [masterToken, setMasterToken] = useState(() => sessionStorage.getItem("masterToken") || "");
   const [adminId, setAdminId] = useState("");
@@ -53,6 +67,7 @@ export default function Master() {
   const [selectedAccountNo, setSelectedAccountNo] = useState("");
   const [amount, setAmount] = useState("");
   const [memo, setMemo] = useState("테스트 입금");
+  const [transactionSearch, setTransactionSearch] = useState("");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
@@ -61,6 +76,31 @@ export default function Master() {
     () => accounts.find((account) => account.accountNo === selectedAccountNo),
     [accounts, selectedAccountNo],
   );
+
+  const filteredTransactions = useMemo(() => {
+    const keyword = transactionSearch.trim().toLowerCase();
+    if (!keyword) return transactions;
+
+    return transactions.filter((tx) => {
+      const haystack = [
+        tx.transactionId,
+        tx.txType,
+        transactionTypeLabel(tx.txType),
+        tx.fromAccount,
+        tx.fromOwnerName,
+        tx.toAccount,
+        tx.toOwnerName,
+        tx.memo,
+        tx.amount?.toString(),
+        tx.balanceAfter?.toString(),
+      ]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase();
+
+      return haystack.includes(keyword);
+    });
+  }, [transactions, transactionSearch]);
 
   const handleLogin = async (event: FormEvent) => {
     event.preventDefault();
@@ -264,30 +304,60 @@ export default function Master() {
         <section className="master__panel master__panel--wide">
           <div className="master__section-head">
             <h2>전체 거래내역</h2>
-            <span>최근 {transactions.length}건</span>
+            <span>
+              {transactionSearch.trim()
+                ? `${filteredTransactions.length}/${transactions.length}건`
+                : `최근 ${transactions.length}건`}
+            </span>
+          </div>
+
+          <div className="master__search">
+            <label>
+              거래내역 검색
+              <input
+                value={transactionSearch}
+                onChange={(event) => setTransactionSearch(event.target.value)}
+                placeholder="거래번호, 계좌번호, 이름, 메모로 검색"
+              />
+            </label>
           </div>
 
           {transactions.length === 0 ? (
             <p className="master__empty">거래내역이 없습니다.</p>
+          ) : filteredTransactions.length === 0 ? (
+            <p className="master__empty">검색 결과가 없습니다.</p>
           ) : (
             <div className="master__tx-list">
-              {transactions.map((tx) => (
+              {filteredTransactions.map((tx) => (
                 <div className="master__tx" key={tx.transactionId}>
-                  <div>
+                  <div className="master__tx-main">
+                    <span className="master__field-label">거래번호</span>
                     <p className="master__tx-id">{tx.transactionId}</p>
-                    <p className="master__tx-meta">
-                      {tx.txType} · {formatDate(tx.createdAt)}
-                    </p>
+                    <p className="master__tx-meta">{formatDate(tx.createdAt)}</p>
                   </div>
                   <div className="master__tx-accounts">
-                    <span>{tx.fromAccount || "BANK"}</span>
-                    <span>{tx.toAccount || "-"}</span>
+                    <div>
+                      <span className="master__field-label">거래유형</span>
+                      <strong>{transactionTypeLabel(tx.txType)}</strong>
+                    </div>
+                    <div>
+                      <span className="master__field-label">보낸 사람</span>
+                      <strong>{accountLabel(tx.fromOwnerName, tx.fromAccount, "BANK")}</strong>
+                    </div>
+                    <div>
+                      <span className="master__field-label">받은 사람</span>
+                      <strong>{accountLabel(tx.toOwnerName, tx.toAccount)}</strong>
+                    </div>
                   </div>
                   <div className="master__tx-amount">
+                    <span className="master__field-label">금액</span>
                     <strong className="num-display">{formatMoney(tx.amount)}</strong>
-                    <small>잔액 {formatMoney(tx.balanceAfter)}</small>
+                    <small>거래 후 잔액 {formatMoney(tx.balanceAfter)}</small>
                   </div>
-                  <p className="master__tx-memo">{tx.memo || "-"}</p>
+                  <div className="master__tx-memo">
+                    <span className="master__field-label">메모</span>
+                    <p>{tx.memo || "-"}</p>
+                  </div>
                 </div>
               ))}
             </div>

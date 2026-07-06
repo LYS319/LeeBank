@@ -41,7 +41,7 @@ export const chatApi = {
         apiClient.post('/ai/chat/confirm', { sessionId, authToken, memberId, pendingAction }),
 };
 
-const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || BASE_URL;
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || window.location.origin;
 
 export const backendClient = axios.create({
     baseURL: BACKEND_URL,

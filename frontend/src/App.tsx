@@ -8,6 +8,7 @@ import Transfer from "./pages/Transfer";
 import History from "./pages/History";
 import BottomNav from "./components/layout/BottomNav";
 import RequireAuth from "./components/layout/RequireAuth";
+import Analyze from './pages/Analyze';
 
 // 로그인 전 화면 (네비게이션 바를 보여주지 않는다)
 const AUTH_PATHS = ["/", "/login", "/signup"];
@@ -71,6 +72,7 @@ function Shell() {
           />
 
           <Route path="*" element={<Navigate to="/" replace />} />
+          <Route path="/analyze" element={<Analyze />} />
         </Routes>
       </div>
       {!hideNav && <BottomNav />}

@@ -73,10 +73,8 @@ public class WebAuthnService {
             RegistrationRequest registrationRequest = new RegistrationRequest(attestationObject, clientDataJSON);
 
             ServerProperty serverProperty = new ServerProperty(
-                    new Origin(origin),
-                    rpId,
-                    new DefaultChallenge(storedChallenge),
-                    null
+                    new Origin(origin), rpId,
+                    new DefaultChallenge(storedChallenge), null
             );
 
             RegistrationParameters registrationParameters = new RegistrationParameters(
@@ -91,8 +89,6 @@ public class WebAuthnService {
                     .getAttestedCredentialData();
 
             long signCount = registrationData.getAttestationObject().getAuthenticatorData().getSignCount();
-
-            // AttestedCredentialData만 직렬화하여 저장 (COSEKey + AAGUID + credentialId 포함)
             byte[] serialized = credentialDataConverter.convert(attestedCredentialData);
 
             CredentialDto credential = new CredentialDto();
@@ -113,22 +109,29 @@ public class WebAuthnService {
     }
 
     // ────────────────────────────────────────
-    // 인증 (Login)
+    // 인증 (Login) — memberId 없이 동작
     // ────────────────────────────────────────
 
     public Map<String, Object> startLogin(String memberId) {
         byte[] challengeBytes = generateChallenge();
-        challengeStore.put("auth:" + memberId, challengeBytes);
+
+        // memberId가 없으면 anonymous 키로 챌린지 저장
+        String challengeKey = (memberId != null && !memberId.isEmpty())
+                ? "auth:" + memberId
+                : "auth:anon:" + UUID.randomUUID();
+
+        challengeStore.put(challengeKey, challengeBytes);
 
         Map<String, Object> response = new HashMap<>();
         response.put("challenge", Base64.getUrlEncoder().withoutPadding().encodeToString(challengeBytes));
+        response.put("challengeKey", challengeKey);  // 프론트에서 finish 시 사용
         response.put("rpId", rpId);
         response.put("timeout", 60000);
         return response;
     }
 
-    public Map<String, Object> finishLogin(String memberId, Map<String, String> body) {
-        byte[] storedChallenge = challengeStore.remove("auth:" + memberId);
+    public Map<String, Object> finishLogin(String challengeKey, Map<String, String> body) {
+        byte[] storedChallenge = challengeStore.remove(challengeKey);
         if (storedChallenge == null) {
             throw new IllegalStateException("챌린지가 만료되었습니다. 다시 시도해주세요.");
         }
@@ -139,55 +142,50 @@ public class WebAuthnService {
             byte[] clientDataJSON    = Base64.getUrlDecoder().decode(body.get("clientDataJSON"));
             byte[] signature         = Base64.getUrlDecoder().decode(body.get("signature"));
 
-            // DB에서 AttestedCredentialData 복원
+            // credentialId로 DB에서 공개키 + memberId 역조회
             CredentialDto stored = credentialMapper.selectByCredentialId(credentialId);
             if (stored == null) {
                 throw new IllegalArgumentException("등록되지 않은 인증기입니다.");
             }
+
             AttestedCredentialData attestedCredentialData =
                     credentialDataConverter.convert(stored.getPublicKeyCose());
 
-            // Authenticator 재조립 (attestationStatement는 검증에 불필요하므로 null)
             Authenticator authenticator = new AuthenticatorImpl(
                     attestedCredentialData, null, stored.getSignCount()
             );
 
             AuthenticationRequest authenticationRequest = new AuthenticationRequest(
                     Base64.getUrlDecoder().decode(credentialId),
-                    authenticatorData,
-                    clientDataJSON,
-                    signature
+                    authenticatorData, clientDataJSON, signature
             );
 
             ServerProperty serverProperty = new ServerProperty(
-                    new Origin(origin),
-                    rpId,
-                    new DefaultChallenge(storedChallenge),
-                    null
+                    new Origin(origin), rpId,
+                    new DefaultChallenge(storedChallenge), null
             );
 
             AuthenticationParameters authenticationParameters = new AuthenticationParameters(
                     serverProperty, authenticator, false, true
             );
 
-            AuthenticationData authenticationData = webAuthnManager.validate(authenticationRequest, authenticationParameters);
+            AuthenticationData authenticationData = webAuthnManager.validate(
+                    authenticationRequest, authenticationParameters
+            );
 
             // sign count 업데이트
             stored.setSignCount(authenticationData.getAuthenticatorData().getSignCount());
             credentialMapper.updateSignCount(stored);
 
-            log.info("WebAuthn 인증 성공 — memberId: {}", memberId);
-            return Map.of("success", true, "memberId", memberId, "message", "생체인증 성공");
+            // memberId를 DB에서 역조회해서 반환 — 프론트에서 ID 입력 불필요
+            log.info("WebAuthn 인증 성공 — memberId: {}", stored.getMemberId());
+            return Map.of("success", true, "memberId", stored.getMemberId(), "message", "생체인증 성공");
 
         } catch (ValidationException e) {
-            log.error("WebAuthn 인증 검증 실패 — memberId: {}, error: {}", memberId, e.getMessage());
+            log.error("WebAuthn 인증 검증 실패 — error: {}", e.getMessage());
             throw new IllegalArgumentException("생체인증 검증에 실패했습니다.");
         }
     }
-
-    // ────────────────────────────────────────
-    // 유틸
-    // ────────────────────────────────────────
 
     private byte[] generateChallenge() {
         byte[] challenge = new byte[32];

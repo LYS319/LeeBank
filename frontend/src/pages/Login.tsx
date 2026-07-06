@@ -8,8 +8,8 @@ import PageHeader from '../components/layout/PageHeader';
 export default function Login() {
     const navigate = useNavigate();
     const login = useAuthStore((s) => s.login);
+    const setPassword = useAuthStore((s) => s.setPassword);
     const {
-        register,
         authenticate,
         loading: webAuthnLoading,
         error: webAuthnError,
@@ -17,7 +17,7 @@ export default function Login() {
     } = useWebAuthn();
 
     const [memberId, setMemberId] = useState('');
-    const [password, setPassword] = useState('');
+    const [password, setPasswordState] = useState('');
     const [error, setError] = useState('');
     const [isLoading, setIsLoading] = useState(false);
 
@@ -25,7 +25,7 @@ export default function Login() {
 
     const handlePasswordChange = (value: string) => {
         const digitsOnly = value.replace(/\D/g, '').slice(0, 6);
-        setPassword(digitsOnly);
+        setPasswordState(digitsOnly);
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -47,7 +47,15 @@ export default function Login() {
             const ownerName = accountData.ownerName ?? memberId.trim();
             const accountNo = accountData.accountNo;
 
-            login(memberId.trim(), accountNo, ownerName);
+            // 생체인증 이체용으로 비밀번호를 메모리에 저장
+            setPassword(password);
+
+            login(memberId.trim(), [{
+                accountNo,
+                balance: accountData.balance ?? 0,
+                holdAmount: accountData.holdAmount ?? 0,
+                bankCode: accountData.bankCode ?? '999',
+            }], ownerName);
             navigate('/home', { replace: true });
         } catch (err: unknown) {
             const e = err as { response?: { status?: number; data?: { message?: string } } };
@@ -63,38 +71,26 @@ export default function Login() {
         }
     };
 
-    // ── 생체인증 등록 ──────────────────────────────
-    const handleWebAuthnRegister = async () => {
-        if (!memberId.trim()) {
-            setError('먼저 회원 ID를 입력해주세요.');
-            return;
-        }
-        setWebAuthnError('');
-        const ok = await register(memberId.trim());
-        if (ok) {
-            setError('');
-            alert('생체인증 등록이 완료되었어요! 다음부터 지문/Face ID로 로그인하세요.');
-        }
-    };
-
-    // ── 생체인증 로그인 ──────────────────────────────
     const handleWebAuthnLogin = async () => {
-        if (!memberId.trim()) {
-            setError('먼저 회원 ID를 입력해주세요.');
-            return;
-        }
         setError('');
         setWebAuthnError('');
 
-        const ok = await authenticate(memberId.trim());
-        if (!ok) return;
+        const result = await authenticate(memberId.trim() || undefined);
+        if (!result.success || !result.memberId) return;
 
         try {
-            const accountRes = await accountApi.getAccountByMember(memberId.trim());
+            const resolvedMemberId = result.memberId;
+            const accountRes = await accountApi.getAccountByMember(resolvedMemberId);
             const accountData = Array.isArray(accountRes.data) ? accountRes.data[0] : accountRes.data;
-            const ownerName = accountData.ownerName ?? memberId.trim();
             const accountNo = accountData.accountNo;
-            login(memberId.trim(), accountNo, ownerName);
+            const ownerName = accountData.ownerName ?? resolvedMemberId;
+
+            login(resolvedMemberId, [{
+                accountNo,
+                balance: accountData.balance ?? 0,
+                holdAmount: accountData.holdAmount ?? 0,
+                bankCode: accountData.bankCode ?? '999',
+            }], ownerName);
             navigate('/home', { replace: true });
         } catch {
             setError('계좌 정보를 불러오는 데 실패했어요.');
@@ -148,31 +144,20 @@ export default function Login() {
                 )}
 
                 <button className="login__submit" type="submit" disabled={!canSubmit || isLoading}>
-                    {isLoading ? '확인하는 중…' : '로그인'}
+                    {isLoading ? '확인하는 중...' : '로그인'}
                 </button>
             </form>
 
-            {/* 생체인증 영역 */}
             <div className="login__biometric">
-                <p className="login__biometric-label">생체인증</p>
-                <div className="login__biometric-buttons">
-                    <button
-                        className="login__biometric-btn"
-                        type="button"
-                        onClick={handleWebAuthnLogin}
-                        disabled={webAuthnLoading || !memberId.trim()}
-                    >
-                        {webAuthnLoading ? '인증 중…' : '🔐 지문/Face ID 로그인'}
-                    </button>
-                    <button
-                        className="login__biometric-btn login__biometric-btn--secondary"
-                        type="button"
-                        onClick={handleWebAuthnRegister}
-                        disabled={webAuthnLoading || !memberId.trim()}
-                    >
-                        생체인증 등록
-                    </button>
-                </div>
+                <p className="login__biometric-label">등록된 생체인증으로 로그인</p>
+                <button
+                    className="login__biometric-btn"
+                    type="button"
+                    onClick={handleWebAuthnLogin}
+                    disabled={webAuthnLoading}
+                >
+                    {webAuthnLoading ? '인증 중...' : '지문/Face ID 로그인'}
+                </button>
             </div>
         </div>
     );

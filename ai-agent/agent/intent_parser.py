@@ -133,6 +133,38 @@ def parse_datetime(text: str, base: Optional[datetime] = None) -> Optional[str]:
     return result_dt.strftime("%Y-%m-%dT%H:%M:%S")
 
 
+def normalize_scheduled_at(value: str, raw_message: str) -> Optional[str]:
+    """
+    LLM이 반환한 scheduledAt을 Oracle TO_TIMESTAMP가 요구하는
+    엄격한 'YYYY-MM-DDTHH:MI:SS' 형식으로 강제 정규화한다.
+
+    배경: LLM은 시스템 프롬프트에 "ISO 8601로 변환하라"는 지시만 받을 뿐
+    형식을 강제로 검증받지 않는다. 초가 빠지거나(2026-07-09T12:00),
+    공백 구분자(2026-07-09 12:00:00), 타임존 표기(...+09:00, ...Z) 등
+    미묘하게 다른 형식이 오면 Oracle TO_TIMESTAMP가 그대로 예외를 던져
+    500 에러로 이어진다. 이를 막기 위해 값이 있어도 항상 이 함수를 거친다.
+    """
+    if not value:
+        return parse_datetime(raw_message)
+
+    text = value.strip()
+
+    # 타임존 표기 제거 (Z, +09:00 등) — Oracle 컬럼은 타임존 없는 TIMESTAMP
+    text = re.sub(r"(Z|[+-]\d{2}:?\d{2})$", "", text)
+    # 공백 구분자를 T로 통일 (예: "2026-07-09 12:00:00" → "2026-07-09T12:00:00")
+    text = text.replace(" ", "T", 1) if "T" not in text and " " in text else text
+
+    for fmt in ("%Y-%m-%dT%H:%M:%S", "%Y-%m-%dT%H:%M", "%Y-%m-%d"):
+        try:
+            parsed = datetime.strptime(text, fmt)
+            return parsed.strftime("%Y-%m-%dT%H:%M:%S")
+        except ValueError:
+            continue
+
+    # 위 포맷 전부 실패하면 자연어 재파싱으로 폴백
+    return parse_datetime(raw_message)
+
+
 def _parse_hour(text: str) -> Optional[int]:
     """시간 표현 파싱"""
     # 오전/오후 + 숫자
@@ -183,11 +215,11 @@ def validate_and_fix_params(tool_name: str, params: dict, raw_message: str) -> d
             if parsed:
                 fixed["amount"] = parsed
 
-        # 예약이체 시 scheduledAt 누락 시 재파싱
-        if tool_name == "schedule_transfer" and not fixed.get("scheduledAt"):
-            parsed_dt = parse_datetime(raw_message)
-            if parsed_dt:
-                fixed["scheduledAt"] = parsed_dt
+        # scheduledAt은 LLM이 값을 채워도 형식이 어긋날 수 있으므로 항상 정규화한다
+        if tool_name == "schedule_transfer":
+            normalized = normalize_scheduled_at(fixed.get("scheduledAt", ""), raw_message)
+            if normalized:
+                fixed["scheduledAt"] = normalized
 
     if tool_name in ("get_balance", "get_history"):
         # accountNo 누락 시 빈 문자열 방지

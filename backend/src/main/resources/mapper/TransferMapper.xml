@@ -68,7 +68,7 @@
             withdrawal_type, transfer_id, memo, created_at
         ) VALUES (
             #{withdrawalId}, #{accountNo}, #{amount}, #{balanceAfter},
-            #{withdrawalType}, #{transferId}, #{memo}, SYSTIMESTAMP
+            #{withdrawalType}, #{transferId, jdbcType=VARCHAR}, #{memo, jdbcType=VARCHAR}, SYSTIMESTAMP
         )
     </insert>
 
@@ -79,7 +79,7 @@
             deposit_type, transfer_id, memo, created_at
         ) VALUES (
             #{depositId}, #{accountNo}, #{amount}, #{balanceAfter},
-            #{depositType}, #{transferId, jdbcType=VARCHAR}, #{memo}, SYSTIMESTAMP
+            #{depositType}, #{transferId, jdbcType=VARCHAR}, #{memo, jdbcType=VARCHAR}, SYSTIMESTAMP
         )
     </insert>
 
@@ -89,8 +89,9 @@
             transfer_id, from_account, to_account, amount, memo,
             transfer_type, status, withdrawal_id, deposit_id, created_at
         ) VALUES (
-            #{transferId}, #{fromAccount}, #{toAccount}, #{amount}, #{memo},
-            #{transferType}, #{status}, #{withdrawalId}, #{depositId}, SYSTIMESTAMP
+            #{transferId}, #{fromAccount}, #{toAccount}, #{amount}, #{memo, jdbcType=VARCHAR},
+            #{transferType, jdbcType=VARCHAR}, #{status, jdbcType=VARCHAR},
+            #{withdrawalId, jdbcType=VARCHAR}, #{depositId, jdbcType=VARCHAR}, SYSTIMESTAMP
         )
     </insert>
 

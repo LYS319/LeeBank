@@ -23,7 +23,7 @@
         ) VALUES (
             'RSV-' || TO_CHAR(SYSDATE, 'YYYYMMDD') || '-' || LPAD(SEQ_RESERVATION.NEXTVAL, 6, '0'),
             #{fromAccount}, #{toAccount}, #{amount},
-            #{memo}, TO_TIMESTAMP(#{scheduledAt}, 'YYYY-MM-DD"T"HH24:MI:SS'),
+            #{memo, jdbcType=VARCHAR}, TO_TIMESTAMP(#{scheduledAt}, 'YYYY-MM-DD"T"HH24:MI:SS'),
             'PENDING', SYSDATE
         )
     </insert>

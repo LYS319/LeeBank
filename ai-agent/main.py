@@ -159,7 +159,13 @@ async def _call_mcp_tool(tool: str, params: dict) -> dict:
                 resp = await client.post(url, json=params)
 
             if resp.status_code >= 400:
-                detail = resp.json().get("detail", {})
+                try:
+                    body = resp.json()
+                except Exception:
+                    body = {}
+                # Spring 응답은 "detail" 래퍼 없이 {"success":false,"message":...} 형태로 오므로
+                # detail이 없으면 message를 그대로 사용해서 실제 에러 원인이 유실되지 않게 한다.
+                detail = body.get("detail") or {"type": "MESSAGE", "message": body.get("message", "요청 처리에 실패했습니다.")}
                 raise HTTPException(status_code=resp.status_code, detail=detail)
 
             return resp.json()

@@ -11,6 +11,7 @@ from dotenv import load_dotenv
 
 from agent.llm import analyze_intent
 from agent.intent_parser import validate_and_fix_params, is_valid_params
+from agent.analyzer import analyze_spending
 
 load_dotenv()
 
@@ -85,21 +86,28 @@ async def chat(body: ChatRequest):
 async def confirm(body: ConfirmRequest):
     tool = body.pendingAction.get("tool")
     params = body.pendingAction.get("params", {})
+    # 조회 도구 자동 확인 — 인증 없이 바로 실행
+    auto_confirm = body.pendingAction.get("autoConfirm", False)
+    if auto_confirm and tool in ("get_balance", "get_history"):
+        mcp_result = await _call_mcp_tool(tool, params)
+        message = _build_result_message(tool, mcp_result)
+        return {"type": "MESSAGE", "message": message}
+    params = body.pendingAction.get("params", {})
 
-    # 1. 인증 검증
-    auth_result = await _verify_auth(
-        member_id=body.memberId,
-        auth_token=body.authToken,
-    )
-    if not auth_result:
-        raise HTTPException(status_code=401, detail={
-            "type": "MESSAGE",
-            "message": "비밀번호가 일치하지 않습니다. 다시 입력해주세요.",
-        })
-
+    # 1. 인증 검증 — 이체만 인증, 조회는 통과
+    requires_auth = tool in ("immediate_transfer", "schedule_transfer")
+    if requires_auth:
+        auth_result = await _verify_auth(
+            member_id=body.memberId,
+            auth_token=body.authToken,
+        )
+        if not auth_result:
+            raise HTTPException(status_code=401, detail={
+                "type": "MESSAGE",
+                "message": "비밀번호가 일치하지 않습니다. 다시 입력해주세요.",
+            })
     # 2. MCP 도구 실행
     mcp_result = await _call_mcp_tool(tool, {**params, "authToken": body.authToken})
-
     # 3. 결과 메시지 생성
     message = _build_result_message(tool, mcp_result)
     return {"type": "MESSAGE", "message": message}
@@ -151,7 +159,13 @@ async def _call_mcp_tool(tool: str, params: dict) -> dict:
                 resp = await client.post(url, json=params)
 
             if resp.status_code >= 400:
-                detail = resp.json().get("detail", {})
+                try:
+                    body = resp.json()
+                except Exception:
+                    body = {}
+                # Spring 응답은 "detail" 래퍼 없이 {"success":false,"message":...} 형태로 오므로
+                # detail이 없으면 message를 그대로 사용해서 실제 에러 원인이 유실되지 않게 한다.
+                detail = body.get("detail") or {"type": "MESSAGE", "message": body.get("message", "요청 처리에 실패했습니다.")}
                 raise HTTPException(status_code=resp.status_code, detail=detail)
 
             return resp.json()
@@ -179,14 +193,46 @@ def _build_result_message(tool: str, result: dict) -> str:
         return f"현재 잔액은 {balance:,}원입니다."
 
     elif tool == "get_history":
-        txns = result.get("transactions", [])
+        txns = result if isinstance(result, list) else result.get("transactions", [])
         if not txns:
             return "거래내역이 없습니다."
         lines = [f"최근 거래내역 {len(txns)}건:"]
         for t in txns:
             amount = int(t.get("amount", 0))
-            type_kr = "출금" if t.get("type") == "TRANSFER_OUT" else "입금"
+            type_kr = "출금" if t.get("txType", t.get("type")) == "TRANSFER_OUT" else "입금"
             lines.append(f"  {type_kr} {amount:,}원 — {t.get('memo', '')}")
         return "\n".join(lines)
 
     return "처리가 완료되었습니다."
+
+# ────────────────────────────────────────
+# 소비패턴 분석 엔드포인트
+# ────────────────────────────────────────
+
+class AnalyzeRequest(BaseModel):
+    accountNo: str
+    memberId: str
+
+
+@app.post("/ai/analyze")
+async def analyze(body: AnalyzeRequest):
+    base = STUB_URL if USE_STUB else MCP_SERVER_URL
+    try:
+        async with httpx.AsyncClient(timeout=10) as client:
+            if USE_STUB:
+                resp = await client.post(f"{base}/tools/get_history", json={"accountNo": body.accountNo})
+                data = resp.json()
+                transactions = data.get("transactions", [])
+            else:
+                resp = await client.get(f"{base}/api/account/history/{body.accountNo}")
+                if resp.status_code != 200:
+                    raise HTTPException(status_code=resp.status_code, detail="거래내역 조회 실패")
+                data = resp.json()
+                transactions = data if isinstance(data, list) else data.get("content", [])
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"거래내역 조회 실패: {str(e)}")
+
+    result = analyze_spending(transactions, body.accountNo)
+    return result

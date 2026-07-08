@@ -10,10 +10,8 @@ export function useWebAuthn() {
     setLoading(true);
     setError('');
     try {
-      // 1. 챌린지 요청
       const { data: options } = await backendClient.post('/api/auth/webauthn/register/start', { memberId });
 
-      // 2. 브라우저 생체인증 등록
       const credential = await navigator.credentials.create({
         publicKey: {
           challenge: _base64ToBuffer(options.challenge),
@@ -24,8 +22,8 @@ export function useWebAuthn() {
             displayName: options.userName,
           },
           pubKeyCredParams: [
-            { alg: -7,  type: 'public-key' }, // ES256
-            { alg: -257, type: 'public-key' }, // RS256
+            { alg: -7,   type: 'public-key' },
+            { alg: -257, type: 'public-key' },
           ],
           timeout: options.timeout,
           attestation: 'none',
@@ -34,10 +32,9 @@ export function useWebAuthn() {
 
       const response = credential.response as AuthenticatorAttestationResponse;
 
-      // 3. 서버에 공개키 저장
       await backendClient.post('/api/auth/webauthn/register/finish', {
         memberId,
-        credentialId: credential.id,
+        credentialId:      credential.id,
         attestationObject: _bufferToBase64(response.attestationObject),
         clientDataJSON:    _bufferToBase64(response.clientDataJSON),
       });
@@ -52,15 +49,17 @@ export function useWebAuthn() {
     }
   };
 
-  // ── 인증 ──────────────────────────────────────
-  const authenticate = async (memberId: string): Promise<boolean> => {
+  // ── 인증 — memberId 없이 동작 ──────────────────
+  const authenticate = async (memberId?: string): Promise<{ success: boolean; memberId?: string }> => {
     setLoading(true);
     setError('');
     try {
-      // 1. 챌린지 요청
-      const { data: options } = await backendClient.post('/api/auth/webauthn/login/start', { memberId });
+      // 1. 챌린지 요청 — memberId 없어도 됨
+      const { data: options } = await backendClient.post('/api/auth/webauthn/login/start', 
+        memberId ? { memberId } : {}
+      );
 
-      // 2. 브라우저 생체인증 확인
+      // 2. 브라우저 생체인증
       const credential = await navigator.credentials.get({
         publicKey: {
           challenge: _base64ToBuffer(options.challenge),
@@ -72,20 +71,21 @@ export function useWebAuthn() {
 
       const response = credential.response as AuthenticatorAssertionResponse;
 
-      // 3. 서버 서명 검증
+      // 3. 서버 서명 검증 — challengeKey 함께 전송
       const { data } = await backendClient.post('/api/auth/webauthn/login/finish', {
-        memberId,
-        credentialId:    credential.id,
+        challengeKey:      options.challengeKey,
+        credentialId:      credential.id,
         authenticatorData: _bufferToBase64(response.authenticatorData),
         clientDataJSON:    _bufferToBase64(response.clientDataJSON),
         signature:         _bufferToBase64(response.signature),
       });
 
-      return data.success === true;
+      // 서버가 memberId를 반환 — 프론트에서 ID 입력 불필요
+      return { success: data.success === true, memberId: data.memberId };
     } catch (e: unknown) {
       const err = e as { response?: { data?: { detail?: string } }; message?: string };
       setError(err.response?.data?.detail || err.message || '생체인증에 실패했어요.');
-      return false;
+      return { success: false };
     } finally {
       setLoading(false);
     }
@@ -94,7 +94,6 @@ export function useWebAuthn() {
   return { register, authenticate, loading, error, setError };
 }
 
-// ── 유틸 ──────────────────────────────────────
 function _base64ToBuffer(base64: string): ArrayBuffer {
   const binary = atob(base64.replace(/-/g, '+').replace(/_/g, '/'));
   const bytes = new Uint8Array(binary.length);

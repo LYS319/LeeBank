@@ -1,0 +1,114 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.bank.mapper.MasterMapper">
+
+    <resultMap id="masterAccountResultMap" type="com.bank.dto.MasterAccountDto">
+        <id     property="accountNo"     column="account_no"/>
+        <result property="memberId"      column="member_id"/>
+        <result property="ownerName"     column="owner_name"/>
+        <result property="bankCode"      column="bank_code"/>
+        <result property="bankName"      column="bank_name"/>
+        <result property="balance"       column="balance"/>
+        <result property="holdAmount"    column="hold_amount"/>
+        <result property="accountStatus" column="account_status"/>
+        <result property="createdAt"     column="created_at"/>
+    </resultMap>
+
+    <resultMap id="masterTransactionResultMap" type="com.bank.dto.MasterTransactionDto">
+        <id     property="transactionId" column="transaction_id"/>
+        <result property="txType"        column="tx_type"/>
+        <result property="fromAccount"   column="from_account"/>
+        <result property="fromOwnerName" column="from_owner_name"/>
+        <result property="toAccount"     column="to_account"/>
+        <result property="toOwnerName"   column="to_owner_name"/>
+        <result property="amount"        column="amount"/>
+        <result property="memo"          column="memo"/>
+        <result property="balanceAfter"  column="balance_after"/>
+        <result property="createdAt"     column="created_at"/>
+        <result property="transferId"    column="transfer_id"/>
+        <result property="transferType"  column="transfer_type"/>
+        <result property="status"        column="status"/>
+    </resultMap>
+
+    <select id="selectAllAccounts" resultMap="masterAccountResultMap">
+        SELECT a.account_no,
+               a.member_id,
+               m.name AS owner_name,
+               a.bank_code,
+               b.bank_name,
+               a.balance,
+               a.hold_amount,
+               a.account_status,
+               a.created_at
+        FROM ACCOUNT a
+        LEFT JOIN MEMBER m ON a.member_id = m.member_id
+        LEFT JOIN BANK b ON a.bank_code = b.bank_code
+        ORDER BY a.created_at DESC
+    </select>
+
+    <select id="selectAllTransactions" resultMap="masterTransactionResultMap">
+        SELECT *
+        FROM (
+            SELECT q.*
+            FROM (
+                SELECT t.transfer_id AS transaction_id,
+                       'TRANSFER' AS tx_type,
+                       t.from_account,
+                       fm.name AS from_owner_name,
+                       t.to_account,
+                       tm.name AS to_owner_name,
+                       t.amount,
+                       t.memo,
+                       w.balance_after,
+                       t.created_at,
+                       t.transfer_id,
+                       t.transfer_type,
+                       t.status
+                FROM TRANSFER t
+                LEFT JOIN WITHDRAWAL_LEDGER w ON t.withdrawal_id = w.withdrawal_id
+                LEFT JOIN ACCOUNT fa ON t.from_account = fa.account_no
+                LEFT JOIN MEMBER fm ON fa.member_id = fm.member_id
+                LEFT JOIN ACCOUNT ta ON t.to_account = ta.account_no
+                LEFT JOIN MEMBER tm ON ta.member_id = tm.member_id
+
+                UNION ALL
+
+                SELECT d.deposit_id AS transaction_id,
+                       'ADMIN_DEPOSIT' AS tx_type,
+                       NULL AS from_account,
+                       'BANK' AS from_owner_name,
+                       d.account_no AS to_account,
+                       dm.name AS to_owner_name,
+                       d.amount,
+                       d.memo,
+                       d.balance_after,
+                       d.created_at,
+                       NULL AS transfer_id,
+                       d.deposit_type AS transfer_type,
+                       'COMPLETED' AS status
+                FROM DEPOSIT_LEDGER d
+                LEFT JOIN ACCOUNT da ON d.account_no = da.account_no
+                LEFT JOIN MEMBER dm ON da.member_id = dm.member_id
+                WHERE d.deposit_type = 'DEPOSIT'
+                  AND d.transfer_id IS NULL
+            ) q
+            ORDER BY q.created_at DESC
+        )
+        WHERE ROWNUM &lt;= #{limit}
+    </select>
+
+    <select id="selectPasswordHash" resultType="java.lang.String">
+        SELECT password
+        FROM MASTER_ADMIN
+        WHERE admin_id = #{adminId}
+          AND admin_status = 'ACTIVE'
+    </select>
+
+    <update id="updateLastLoginAt">
+        UPDATE MASTER_ADMIN
+        SET last_login_at = SYSDATE
+        WHERE admin_id = #{adminId}
+    </update>
+
+</mapper>

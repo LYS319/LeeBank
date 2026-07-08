@@ -41,12 +41,20 @@ export const chatApi = {
         apiClient.post('/ai/chat/confirm', { sessionId, authToken, memberId, pendingAction }),
 };
 
-const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || BASE_URL;
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || window.location.origin;
 
 export const backendClient = axios.create({
     baseURL: BACKEND_URL,
     timeout: 10000,
     headers: { 'Content-Type': 'application/json' },
+});
+
+backendClient.interceptors.request.use((config) => {
+    const masterToken = sessionStorage.getItem('masterToken');
+    if (masterToken) {
+        config.headers['X-Master-Token'] = masterToken;
+    }
+    return config;
 });
 
 export const accountApi = {
@@ -76,4 +84,17 @@ export const authApi = {
     // 회원가입 + 계좌개설(첫 계좌)
     signup: (payload: { memberId: string; password: string; name: string; phone: string }) =>
         backendClient.post('/api/auth/signup', payload),
+};
+
+export const masterApi = {
+    login: (adminId: string, password: string) =>
+        backendClient.post('/api/master/auth/login', { adminId, password }),
+
+    getAccounts: () => backendClient.get('/api/master/accounts'),
+
+    getTransactions: (limit = 100) =>
+        backendClient.get('/api/master/transactions', { params: { limit } }),
+
+    deposit: (payload: { accountNo: string; amount: number; memo?: string }) =>
+        backendClient.post('/api/master/deposit', payload),
 };

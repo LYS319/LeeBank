@@ -126,6 +126,47 @@ def analyze_intent(message: str, account_no: str, session_id: str) -> dict:
         if tool_name in ("immediate_transfer", "schedule_transfer"):
             tool_params["fromAccount"] = account_no
 
+        # 조회 도구는 인증 없이 바로 실행 — ELICITATION 건너뜀
+        if tool_name in ("get_balance", "get_history"):
+            tool_params["authToken"] = ""
+            return {
+                "type": "ELICITATION",
+                "message": "__AUTO_CONFIRM__",
+                "pendingAction": {
+                    "tool": tool_name,
+                    "params": tool_params,
+                    "autoConfirm": True,
+                },
+            }
+            # 결과 메시지 생성
+            if tool_name == "get_balance":
+                balance = int(mcp_result.get("availableBalance", mcp_result.get("balance", 0)))
+                return {
+                    "type": "MESSAGE",
+                    "message": f"현재 잔액은 {balance:,}원입니다."
+                }
+            elif tool_name == "get_history":
+                txns = mcp_result if isinstance(mcp_result, list) else mcp_result.get("transactions", [])
+                if not txns:
+                    return {"type": "MESSAGE", "message": "거래내역이 없습니다."}
+                lines = [f"최근 거래내역 {len(txns)}건:"]
+                for t in txns:
+                    amount = int(t.get("amount", 0))
+                    type_kr = "출금" if t.get("txType", t.get("type")) == "TRANSFER_OUT" else "입금"
+                    lines.append(f"  {type_kr} {amount:,}원 — {t.get('memo', '')}")
+                return {"type": "MESSAGE", "message": "\n".join(lines)}
+
+        # 이체 도구는 인증 필요 — ELICITATION
+        confirm_message = _build_confirm_message(tool_name, tool_params)
+        return {
+            "type": "ELICITATION",
+            "message": confirm_message,
+            "pendingAction": {
+                "tool": tool_name,
+                "params": tool_params,
+            },
+        }
+
         # 사용자에게 보여줄 확인 메시지 생성
         confirm_message = _build_confirm_message(tool_name, tool_params)
 
